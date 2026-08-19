@@ -105,6 +105,47 @@ def test_symbolic_engine_idempotency(test_db):
     assert fnd_count_1 == fnd_count_2
 
 
+# 3B. Test Three Runs Equality and Duplicate Tuple Assertion
+def test_symbolic_engine_three_runs_equality_and_no_duplicates(test_db):
+    report = Report(id="REP-TRIPLE-SYM", filename="Triple_Sym_Report.xml", status="extracted", page_count=1)
+    test_db.add(report)
+
+    for i in range(1, 4):
+        test_db.add(Evidence(
+            evidence_id=f"EVT-TS-{i}",
+            report_id="REP-TRIPLE-SYM",
+            evidence_type="PERSON" if i == 1 else ("PHONE" if i == 2 else "LOCATION"),
+            value=f"Entity_{i}",
+            confidence=0.9,
+            source_page=1,
+            source_report="Triple_Sym_Report.xml",
+            provenance_detail="{}",
+        ))
+    test_db.commit()
+
+    engine = SymbolicEngine()
+
+    run1 = engine.process_report("REP-TRIPLE-SYM", test_db)
+    rel1 = test_db.query(Relationship).filter(Relationship.report_id == "REP-TRIPLE-SYM").count()
+    fnd1 = test_db.query(Finding).filter(Finding.report_id == "REP-TRIPLE-SYM").count()
+
+    run2 = engine.process_report("REP-TRIPLE-SYM", test_db)
+    rel2 = test_db.query(Relationship).filter(Relationship.report_id == "REP-TRIPLE-SYM").count()
+    fnd2 = test_db.query(Finding).filter(Finding.report_id == "REP-TRIPLE-SYM").count()
+
+    run3 = engine.process_report("REP-TRIPLE-SYM", test_db)
+    rel3 = test_db.query(Relationship).filter(Relationship.report_id == "REP-TRIPLE-SYM").count()
+    fnd3 = test_db.query(Finding).filter(Finding.report_id == "REP-TRIPLE-SYM").count()
+
+    assert rel1 == rel2 == rel3
+    assert fnd1 == fnd2 == fnd3
+
+    # Regression duplicate check: assert no duplicate (source, target, type, rule_id) tuples exist
+    rels = test_db.query(Relationship).filter(Relationship.report_id == "REP-TRIPLE-SYM").all()
+    rel_tuples = [(r.source_evidence_id, r.target_evidence_id, r.relationship_type, r.rule_id) for r in rels]
+    assert len(rel_tuples) == len(set(rel_tuples))
+
+
 # 4. API Integration Test for /analyze, /relationships, /findings, and GET /findings/{id}
 def test_api_symbolic_endpoints(client):
     seed_payload = {

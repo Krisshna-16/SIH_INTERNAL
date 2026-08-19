@@ -53,6 +53,29 @@ def test_consolidate_report_evidence_idempotency(test_db):
     assert ev_count_2 == 2  # Must not duplicate rows
 
 
+# 1B. Test Three Runs Equality
+def test_consolidate_report_evidence_three_runs_equality(test_db):
+    report = Report(id="REP-TRIPLE-RUN", filename="Triple_Run_Case.xml", status="extracted", page_count=1)
+    test_db.add(report)
+
+    ent1 = Entity(id="ENT-T1", report_id="REP-TRIPLE-RUN", type="PERSON", value="Vikram", confidence=0.9, source_page=1, source_report="Triple_Run_Case.xml", extraction_method="spacy_ner")
+    ent2 = Entity(id="ENT-T2", report_id="REP-TRIPLE-RUN", type="PHONE", value="+91 9876543210", confidence=0.9, source_page=1, source_report="Triple_Run_Case.xml", extraction_method="regex")
+    test_db.add_all([ent1, ent2])
+    test_db.commit()
+
+    run1 = consolidate_report_evidence("REP-TRIPLE-RUN", test_db)
+    count1 = test_db.query(Evidence).filter(Evidence.report_id == "REP-TRIPLE-RUN").count()
+
+    run2 = consolidate_report_evidence("REP-TRIPLE-RUN", test_db)
+    count2 = test_db.query(Evidence).filter(Evidence.report_id == "REP-TRIPLE-RUN").count()
+
+    run3 = consolidate_report_evidence("REP-TRIPLE-RUN", test_db)
+    count3 = test_db.query(Evidence).filter(Evidence.report_id == "REP-TRIPLE-RUN").count()
+
+    assert count1 == count2 == count3 == 2
+    assert run1["total_evidence"] == run2["total_evidence"] == run3["total_evidence"] == 2
+
+
 # 2. Strict Provenance Completeness Check
 def test_evidence_provenance_completeness(test_db):
     report = Report(id="REP-PROV-CHECK", filename="Provenance_Verification.xml", status="extracted", page_count=1)

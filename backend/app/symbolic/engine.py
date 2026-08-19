@@ -1,6 +1,6 @@
 import json
 import logging
-import uuid
+import hashlib
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from app.models.report import Report
@@ -18,9 +18,23 @@ from app.symbolic.finding_rules import (
 logger = logging.getLogger(__name__)
 
 
+def generate_deterministic_rel_id(report_id: str, src_id: str, tgt_id: str, rel_type: str, rule_id: str) -> str:
+    raw_key = f"{report_id}:{src_id}:{tgt_id}:{rel_type}:{rule_id}"
+    sha_hash = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()[:10].upper()
+    return f"REL-{sha_hash}"
+
+
+def generate_deterministic_fnd_id(report_id: str, fnd_type: str, rule_id: str, related_ev_ids: List[str]) -> str:
+    sorted_ev = ",".join(sorted(related_ev_ids))
+    raw_key = f"{report_id}:{fnd_type}:{rule_id}:{sorted_ev}"
+    sha_hash = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()[:10].upper()
+    return f"FND-{sha_hash}"
+
+
 class SymbolicEngine:
     """
     100% Deterministic Rule Engine executing Symbolic AI reasoning over Evidence ground-truth.
+    Guarantees 100% idempotency across re-runs.
     """
 
     def process_report(self, report_id: str, db: Session) -> Dict[str, Any]:
@@ -32,7 +46,6 @@ class SymbolicEngine:
         
         if not evidence_items:
             logger.info(f"Report '{report_id}' has 0 evidence items. Skipping symbolic analysis.")
-            # Clear existing relationships/findings for idempotency
             db.query(Relationship).filter(Relationship.report_id == report_id).delete()
             db.query(Finding).filter(Finding.report_id == report_id).delete()
             
@@ -40,7 +53,7 @@ class SymbolicEngine:
                 actor="system",
                 action="SYMBOLIC_ANALYSIS_EXECUTED",
                 report_id=report_id,
-                details=json.dumps({"relationships_created": 0, "findings_created": 0}),
+                details=json.dumps({"total_relationships": 0, "total_findings": 0}),
             ))
             db.commit()
             return {
@@ -77,11 +90,20 @@ class SymbolicEngine:
         except Exception as e:
             logger.error(f"Error executing rule_high_frequency_location on report '{report_id}': {e}")
 
-        # 3. Persist Relationships in High-Performance Batches
+        # 3. Persist Relationships with Deterministic Keys
         rel_db_items = []
         rel_type_counts: Dict[str, int] = {}
+        seen_rel_keys = set()
+
         for r_dict in derived_rels:
-            rel_id = f"REL-{uuid.uuid4().hex[:8].upper()}"
+            rel_key = (r_dict["source_evidence_id"], r_dict["target_evidence_id"], r_dict["relationship_type"], r_dict["rule_id"])
+            if rel_key in seen_rel_keys:
+                continue
+            seen_rel_keys.add(rel_key)
+
+            rel_id = generate_deterministic_rel_id(
+                report_id, r_dict["source_evidence_id"], r_dict["target_evidence_id"], r_dict["relationship_type"], r_dict["rule_id"]
+            )
             rel_db = Relationship(
                 id=rel_id,
                 report_id=report_id,
@@ -96,12 +118,21 @@ class SymbolicEngine:
             rel_db_items.append(rel_db)
             rel_type_counts[r_dict["relationship_type"]] = rel_type_counts.get(r_dict["relationship_type"], 0) + 1
 
-        # 4. Persist Findings
+        # 4. Persist Findings with Deterministic Keys
         fnd_db_items = []
         fnd_type_counts: Dict[str, int] = {}
         severity_counts: Dict[str, int] = {}
+        seen_fnd_keys = set()
+
         for f_dict in derived_findings:
-            fnd_id = f"FND-{uuid.uuid4().hex[:8].upper()}"
+            fnd_key = (f_dict["finding_type"], f_dict["rule_id"], tuple(sorted(f_dict["related_evidence_ids"])))
+            if fnd_key in seen_fnd_keys:
+                continue
+            seen_fnd_keys.add(fnd_key)
+
+            fnd_id = generate_deterministic_fnd_id(
+                report_id, f_dict["finding_type"], f_dict["rule_id"], f_dict["related_evidence_ids"]
+            )
             fnd_db = Finding(
                 id=fnd_id,
                 report_id=report_id,
@@ -120,15 +151,12 @@ class SymbolicEngine:
             severity_counts[f_dict["severity"]] = severity_counts.get(f_dict["severity"], 0) + 1
 
         try:
-            # Batch save relationships
             batch_size = 1000
             for i in range(0, len(rel_db_items), batch_size):
                 db.bulk_save_objects(rel_db_items[i:i + batch_size])
 
-            # Save findings
             db.bulk_save_objects(fnd_db_items)
 
-            # Audit log entry
             db.add(AuditLog(
                 actor="system",
                 action="SYMBOLIC_ANALYSIS_EXECUTED",
@@ -139,6 +167,7 @@ class SymbolicEngine:
                 }),
             ))
 
+            report.status = "analyzed"
             db.commit()
             logger.info(f"Symbolic analysis completed for '{report_id}': {len(rel_db_items)} relationships, {len(fnd_db_items)} findings persisted.")
 

@@ -77,6 +77,13 @@ export const ReportDashboardPage: React.FC = () => {
 
   const runFullPipeline = async () => {
     if (!reportId) return;
+
+    // Confirmation dialog safeguard if pipeline has already been run
+    if (pipeline.analyze === 'done' || report?.status === 'analyzed') {
+      const confirmReRun = window.confirm("Pipeline has already been executed for this report. Are you sure you want to re-run?");
+      if (!confirmReRun) return;
+    }
+
     setPipeline({
       extract: 'running',
       consolidate: 'idle',
@@ -160,6 +167,8 @@ export const ReportDashboardPage: React.FC = () => {
   if (loading) return <LoadingSpinner message="Initializing Mission Control metrics..." />;
   if (!report) return <EmptyState icon="❌" title="Report not found" description={`No case report with ID "${reportId}" exists.`} />;
 
+  const isRunning = pipeline.extract === 'running' || pipeline.consolidate === 'running' || pipeline.analyze === 'running';
+
   return (
     <div className="dashboard-page">
       {/* Page Title & Mission Control Header */}
@@ -176,10 +185,10 @@ export const ReportDashboardPage: React.FC = () => {
           <button
             className="btn-cyber-primary"
             onClick={runFullPipeline}
-            disabled={pipeline.extract === 'running' || pipeline.consolidate === 'running' || pipeline.analyze === 'running'}
+            disabled={isRunning}
           >
             <span className="btn-icon">⚡</span>
-            <span>{pipeline.extract !== 'idle' && pipeline.analyze !== 'done' ? 'EXECUTING PIPELINE (6s)...' : 'EXECUTE FULL PIPELINE'}</span>
+            <span>{isRunning ? 'EXECUTING PIPELINE (6s)...' : 'EXECUTE FULL PIPELINE'}</span>
           </button>
         </div>
       </div>
