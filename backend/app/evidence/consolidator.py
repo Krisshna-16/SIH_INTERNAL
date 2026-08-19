@@ -46,7 +46,7 @@ def consolidate_report_evidence(report_id: str, db: Session) -> Dict[str, Any]:
     """
     Consolidates Phase 2 Entity records into canonical Evidence records with complete provenance.
     Guarantees atomic execution via database transaction and enforces 100% idempotency by
-    clearing existing report evidence and deduplicating by deterministic evidence keys.
+    clearing existing report evidence and checking for existing evidence before inserting each row.
     """
     report = db.query(Report).filter(Report.id == report_id).first()
     if not report:
@@ -95,10 +95,18 @@ def consolidate_report_evidence(report_id: str, db: Session) -> Dict[str, Any]:
         for ent in entities:
             ev_id = generate_deterministic_evidence_id(report_id, ent.type, ent.value, ent.source_page)
 
-            # Skip duplicate evidence items within the same run
+            # Skip duplicate evidence items within the same in-memory loop
             if ev_id in seen_evidence_ids:
                 continue
             seen_evidence_ids.add(ev_id)
+
+            # Mandatory Check-Before-Insert Database Query inside the loop for every row
+            existing_ev = db.query(Evidence).filter(
+                Evidence.report_id == report_id,
+                Evidence.derived_from_entity_id == ent.id
+            ).first()
+            if existing_ev:
+                continue
 
             prov_detail = json.dumps({
                 "extraction_method": ent.extraction_method,

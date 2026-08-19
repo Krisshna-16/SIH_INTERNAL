@@ -90,7 +90,7 @@ class SymbolicEngine:
         except Exception as e:
             logger.error(f"Error executing rule_high_frequency_location on report '{report_id}': {e}")
 
-        # 3. Persist Relationships with Deterministic Keys
+        # 3. Persist Relationships with Deterministic Keys & Mandatory Check-Before-Insert Query
         rel_db_items = []
         rel_type_counts: Dict[str, int] = {}
         seen_rel_keys = set()
@@ -100,6 +100,17 @@ class SymbolicEngine:
             if rel_key in seen_rel_keys:
                 continue
             seen_rel_keys.add(rel_key)
+
+            # Mandatory Check-Before-Insert Database Query inside the loop for every Relationship row
+            existing_rel = db.query(Relationship).filter(
+                Relationship.report_id == report_id,
+                Relationship.source_evidence_id == r_dict["source_evidence_id"],
+                Relationship.target_evidence_id == r_dict["target_evidence_id"],
+                Relationship.relationship_type == r_dict["relationship_type"],
+                Relationship.rule_id == r_dict["rule_id"]
+            ).first()
+            if existing_rel:
+                continue
 
             rel_id = generate_deterministic_rel_id(
                 report_id, r_dict["source_evidence_id"], r_dict["target_evidence_id"], r_dict["relationship_type"], r_dict["rule_id"]
@@ -118,7 +129,7 @@ class SymbolicEngine:
             rel_db_items.append(rel_db)
             rel_type_counts[r_dict["relationship_type"]] = rel_type_counts.get(r_dict["relationship_type"], 0) + 1
 
-        # 4. Persist Findings with Deterministic Keys
+        # 4. Persist Findings with Deterministic Keys & Mandatory Check-Before-Insert Query
         fnd_db_items = []
         fnd_type_counts: Dict[str, int] = {}
         severity_counts: Dict[str, int] = {}
@@ -129,6 +140,16 @@ class SymbolicEngine:
             if fnd_key in seen_fnd_keys:
                 continue
             seen_fnd_keys.add(fnd_key)
+
+            # Mandatory Check-Before-Insert Database Query inside the loop for every Finding row
+            existing_fnd = db.query(Finding).filter(
+                Finding.report_id == report_id,
+                Finding.finding_type == f_dict["finding_type"],
+                Finding.rule_id == f_dict["rule_id"],
+                Finding.related_evidence_ids == json.dumps(f_dict["related_evidence_ids"])
+            ).first()
+            if existing_fnd:
+                continue
 
             fnd_id = generate_deterministic_fnd_id(
                 report_id, f_dict["finding_type"], f_dict["rule_id"], f_dict["related_evidence_ids"]
