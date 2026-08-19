@@ -943,7 +943,7 @@ body {
   text-transform: uppercase;
 }
 
-.status-extracted, .status-analyzed { background: var(--status-success-bg); color: var(--status-success); border: 1px solid var(--status-success-border); }
+.status-extracted, .status-analyzed, .status-parsed { background: var(--status-success-bg); color: var(--status-success); border: 1px solid var(--status-success-border); }
 
 .privacy-stream-list {
   display: flex;
@@ -1072,6 +1072,87 @@ body {
   color: #020617;
 }
 
+/* FILE DROPZONE & UPLOAD STYLES (Used in ReportsListPage.tsx) */
+.upload-box-card {
+  padding: 1.5rem;
+  margin-bottom: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border-top: 3px solid var(--cyan);
+}
+
+.file-dropzone {
+  border: 2px dashed var(--border-default);
+  background: var(--surface-1);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.file-dropzone:hover, .file-dropzone.dropzone-active {
+  border-color: var(--cyan);
+  background: var(--cyan-glow);
+  box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
+}
+
+.dropzone-icon {
+  font-size: 2.8rem;
+  filter: drop-shadow(0 0 8px rgba(0, 242, 255, 0.3));
+}
+
+.dropzone-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dropzone-main {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dropzone-sub {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.selected-file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface-2);
+  border: 1px solid var(--cyan-border);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+}
+
+.selected-file-info .file-name {
+  color: var(--cyan);
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
+.selected-file-info .file-size {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.upload-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
 /* Control Bar Cards across Explorer pages */
 .control-card {
   padding: 1.15rem 1.35rem;
@@ -1180,6 +1261,10 @@ body {
   border-bottom: 1px solid var(--border-dim);
   color: var(--text-primary);
   vertical-align: middle;
+}
+
+.data-table tr.clickable-row {
+  cursor: pointer;
 }
 
 .data-table tr:hover, .entities-table tr:hover {

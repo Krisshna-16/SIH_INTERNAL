@@ -43,6 +43,17 @@ export const fetchReports = async (): Promise<ReportItem[]> => {
   return response.data;
 };
 
+export const uploadReportFile = async (file: File): Promise<ReportItem> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await apiClient.post<ReportItem>('/api/v1/reports/upload', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
 export const createSyntheticReport = async (
   filename: string,
   pages: { page_number: number; text_content: string }[]
