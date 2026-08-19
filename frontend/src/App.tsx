@@ -34,9 +34,17 @@ export const App: React.FC = () => {
           {/* Public Auth Route */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Protected Reports List Landing */}
+          {/* Protected Reports List Landing (at both / and /reports) */}
           <Route
             path="/"
+            element={
+              <ProtectedRoute>
+                <ReportsListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
             element={
               <ProtectedRoute>
                 <ReportsListPage />
