@@ -1,0 +1,38 @@
+# OS & System Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE & Editor Folders
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Python Dependencies & Caches
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Databases
+*.db
+*.sqlite3
+
+# Node & Frontend Dependencies / Builds
+node_modules/
+dist/
+build/
+.output/
+
+# Logs & Temporary Files
+*.log
+scratch/
+tmp/
