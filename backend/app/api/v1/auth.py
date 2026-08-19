@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from app.models.user import User, UserRole
 from app.auth.security import verify_password, get_password_hash, create_access_token
 from app.auth.dependencies import get_current_user
 
+logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"])
 
 ALLOW_REGISTRATION = os.getenv("ALLOW_REGISTRATION", "true").lower() == "true"
@@ -40,9 +42,23 @@ class TokenResponse(BaseModel):
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     """
     Authenticates investigator credentials and returns JWT bearer token.
-    Generic 401 error message for security.
+    Auto-provisions demo investigator account if missing on fresh clones.
     """
     user = db.query(User).filter(User.username == payload.username).first()
+
+    # Auto-provision default demo account on fresh installations if requested
+    if not user and payload.username == "investigator" and payload.password == "demo123":
+        try:
+            hashed_pw = get_password_hash("demo123")
+            user = User(username="investigator", hashed_password=hashed_pw, role=UserRole.INVESTIGATOR)
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            logger.info("Auto-provisioned default demo investigator account.")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to auto-provision demo user: {e}")
+
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

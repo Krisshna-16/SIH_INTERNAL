@@ -1,3 +1,4 @@
+import logging
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -18,11 +19,24 @@ from app.core.logging_config import setup_logging
 from app.db.session import engine, Base
 import app.models  # Ensure all SQLAlchemy models are registered for metadata creation
 
+from scripts.seed_demo_user import seed_demo_user
+from scripts.seed_demo_data import seed_demo_data
+
+logger = logging.getLogger(__name__)
+
 # Initialize structured logging
 setup_logging()
 
 # Create DB tables if they don't exist
 Base.metadata.create_all(bind=engine)
+
+# Automatically seed default demo user and report data on startup if missing
+try:
+    seed_demo_user()
+    seed_demo_data()
+    logger.info("Automatic database seeding check completed successfully.")
+except Exception as e:
+    logger.warning(f"Automatic database seeding encountered warning: {e}")
 
 app = FastAPI(
     title=settings.APP_NAME,
