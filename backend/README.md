@@ -6,17 +6,53 @@ FastAPI-based backend service providing REST APIs, database management, and fore
 
 ### Prerequisites
 - Python 3.10+ installed
+- Docker & Docker Compose (optional for local PostgreSQL instance)
 
-### Environment Configuration
-1. Copy the example environment file:
+### Database Configuration (PostgreSQL & SQLite Fallback)
+
+The platform supports both **PostgreSQL** (Production / Docker) and **SQLite** (Local Fallback):
+
+1. **Copy Environment File**:
    ```bash
    cp .env.example .env
    ```
-2. Adjust environment variables in `.env`:
-   - Set `EXTERNAL_LLM_API_KEY` (Groq API key from https://console.groq.com) for fast default cloud LLM Q&A inference.
-   - `GROQ_MODEL` defaults to `llama-3.3-70b-versatile`.
 
-### Virtual Environment Setup
+2. **Option A: PostgreSQL via Docker Compose (Recommended)**:
+   ```bash
+   # Start local PostgreSQL container in background
+   docker-compose up -d
+
+   # Set DATABASE_URL in .env:
+   # DATABASE_URL=postgresql://ufdr_user:ufdr_pass@localhost:5432/ufdr_db
+   ```
+
+3. **Option B: SQLite Local Fallback**:
+   ```bash
+   # Set DATABASE_URL in .env:
+   # DATABASE_URL=sqlite:///./ufdr.db
+   ```
+
+### Database Schema Migrations (Alembic)
+
+```bash
+# Run database migrations to bring target schema up to date
+alembic upgrade head
+
+# Generate a new migration after model changes
+alembic revision --autogenerate -m "description_of_changes"
+```
+
+### Data Migration (SQLite to PostgreSQL)
+
+To transfer existing SQLite demo datasets to PostgreSQL:
+```bash
+python scripts/migrate_sqlite_to_postgres.py
+```
+
+---
+
+## Virtual Environment Setup
+
 ```bash
 # Create virtual environment
 python -m venv venv
@@ -45,7 +81,7 @@ uvicorn app.main:app --reload --port 8000
 
 ## LLM Provider Configuration & Air-Gapped Mode
 
-- **Default Mode (`llm_provider: "external"`)**: Fast hosted Groq inference (`llama-3.3-70b-versatile`). Prompts are 100% pseudonymized and minimized by the Phase 9 Privacy Gateway before transmission.
+- **Default Mode (`llm_provider: "external"`)**: Fast hosted Groq inference (`openai/gpt-oss-20b`). Prompts are 100% pseudonymized and minimized by the Phase 9 Privacy Gateway before transmission.
 - **Auto-Fallback Mode (`llm_provider: "auto"`)**: Tries Groq first; if Groq is unavailable, automatically falls back to local Ollama / local synthesis engine with `fallback_used: true`.
 - **Air-Gapped Local Mode (`llm_provider: "local"`)**: Forces 100% offline local inference via local Ollama (`ollama/llama3.1:8b`) with zero cloud data transmission.
 

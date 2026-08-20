@@ -11,14 +11,19 @@ if not settings.DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set. Failing fast on database session initialization.")
 
 connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
+is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
+if is_sqlite:
     connect_args["check_same_thread"] = False
 
 try:
     engine = create_engine(
         settings.DATABASE_URL,
         connect_args=connect_args,
-        pool_pre_ping=True if not settings.DATABASE_URL.startswith("sqlite") else False,
+        pool_pre_ping=True,
+        # Configure connection pooling for Postgres
+        pool_size=10 if not is_sqlite else 5,
+        max_overflow=20 if not is_sqlite else 10,
     )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     Base = declarative_base()

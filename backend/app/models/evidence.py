@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Text
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -20,13 +20,13 @@ class Evidence(Base):
     evidence_type = Column(String, nullable=False, index=True)
     value = Column(String, nullable=False)
     normalized_value = Column(String, nullable=True)
-    timestamp = Column(DateTime, nullable=True, index=True)
+    timestamp = Column(DateTime(timezone=True), nullable=True, index=True)
     confidence = Column(Float, nullable=False)
     source_page = Column(Integer, nullable=False)
     source_report = Column(String, nullable=False)
-    provenance_detail = Column(Text, nullable=False)  # JSON string e.g. {"extraction_method": "...", "entity_id": "..."}
+    provenance_detail = Column(JSON, nullable=False)
     derived_from_entity_id = Column(String, ForeignKey("entities.id"), nullable=True, index=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     report = relationship("Report")
     derived_entity = relationship("Entity")

@@ -106,7 +106,7 @@ def test_evidence_provenance_completeness(test_db):
     assert ev.confidence == 0.75
     assert ev.derived_from_entity_id == "ENT-999"
     assert ev.provenance_detail is not None
-    assert "spacy_ner" in ev.provenance_detail
+    assert "spacy_ner" in str(ev.provenance_detail)
 
 
 # 3. API Integration Test for Consolidation, Search, Summary, and Detail View Logging

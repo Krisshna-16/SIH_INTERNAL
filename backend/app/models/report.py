@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import Column, String, Integer, Text, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from app.db.session import Base
 
@@ -11,7 +11,7 @@ class Report(Base):
     filename = Column(String, nullable=False)
     status = Column(String, default="parsed", nullable=False)
     page_count = Column(Integer, default=0, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     pages = relationship("ReportPage", back_populates="report", cascade="all, delete-orphan")
     entities = relationship("Entity", back_populates="report", cascade="all, delete-orphan")
@@ -24,6 +24,6 @@ class ReportPage(Base):
     report_id = Column(String, ForeignKey("reports.id"), nullable=False, index=True)
     page_number = Column(Integer, nullable=False)
     text_content = Column(Text, nullable=False)
-    tables_json = Column(Text, nullable=True)
+    tables_json = Column(JSON, nullable=True)
 
     report = relationship("Report", back_populates="pages")

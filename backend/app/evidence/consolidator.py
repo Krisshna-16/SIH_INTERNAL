@@ -56,7 +56,6 @@ def consolidate_report_evidence(report_id: str, db: Session) -> Dict[str, Any]:
 
     try:
         # 1. Clear existing relationships & findings that reference evidence for this report
-        # to prevent foreign key constraint violations during evidence re-consolidation
         db.query(Relationship).filter(Relationship.report_id == report_id).delete()
         db.query(Finding).filter(Finding.report_id == report_id).delete()
 
@@ -69,7 +68,7 @@ def consolidate_report_evidence(report_id: str, db: Session) -> Dict[str, Any]:
                 actor="system",
                 action="EVIDENCE_CREATED",
                 report_id=report_id,
-                details=json.dumps({"total_evidence": 0, "counts": {}}),
+                details={"total_evidence": 0, "counts": {}},
             )
             db.add(audit_entry)
             db.commit()
@@ -95,12 +94,10 @@ def consolidate_report_evidence(report_id: str, db: Session) -> Dict[str, Any]:
         for ent in entities:
             ev_id = generate_deterministic_evidence_id(report_id, ent.type, ent.value, ent.source_page)
 
-            # Skip duplicate evidence items within the same in-memory loop
             if ev_id in seen_evidence_ids:
                 continue
             seen_evidence_ids.add(ev_id)
 
-            # Mandatory Check-Before-Insert Database Query inside the loop for every row
             existing_ev = db.query(Evidence).filter(
                 Evidence.report_id == report_id,
                 Evidence.derived_from_entity_id == ent.id
@@ -108,13 +105,13 @@ def consolidate_report_evidence(report_id: str, db: Session) -> Dict[str, Any]:
             if existing_ev:
                 continue
 
-            prov_detail = json.dumps({
+            prov_detail = {
                 "extraction_method": ent.extraction_method,
                 "entity_id": ent.id,
                 "source_report": ent.source_report,
                 "source_page": ent.source_page,
                 "confidence": ent.confidence,
-            })
+            }
 
             ts = parse_date_string(ent.value) if ent.type == "DATE" else page_timestamps.get(ent.source_page, default_ts)
 
@@ -140,7 +137,7 @@ def consolidate_report_evidence(report_id: str, db: Session) -> Dict[str, Any]:
             actor="system",
             action="EVIDENCE_CREATED",
             report_id=report_id,
-            details=json.dumps({"total_evidence": len(new_evidence_list), "counts": evidence_counts}),
+            details={"total_evidence": len(new_evidence_list), "counts": evidence_counts},
         )
         db.add(audit_entry)
 
