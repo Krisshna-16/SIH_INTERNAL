@@ -159,6 +159,25 @@ def pseudonymize_retrieval_result(retrieval_result: RetrievalResult, db: Session
             if rent.get("matched_values"):
                 rent["matched_values"] = [mapping_lookup.get(mv, get_or_create_pseudonym(report_id, mv, rent.get("entity_type", "ENTITY"), None, db)) for mv in rent["matched_values"]]
 
+    # 6. CRITICAL: Pseudonymize original_question to prevent PII leakage to external LLM
+    if res_dict.get("original_question"):
+        q_text = res_dict["original_question"]
+        # Pass 1: Replace PII from this retrieval's mapping_lookup
+        for r_val, p_val in mapping_lookup.items():
+            q_text = q_text.replace(r_val, p_val)
+        # Pass 2: Replace PII from ALL prior pseudonym mappings for this report in the DB.
+        # This catches names/phones mentioned in the question that were pseudonymized by
+        # earlier queries but are not in this retrieval's evidence set.
+        all_mappings = db.query(PseudonymMapping).filter(
+            PseudonymMapping.report_id == report_id
+        ).all()
+        # Sort by real_value length descending to prevent partial-match corruption
+        # (e.g., "Inspector Vikram Singh" must be replaced before "Vikram")
+        all_mappings_sorted = sorted(all_mappings, key=lambda m: len(m.real_value), reverse=True)
+        for m in all_mappings_sorted:
+            q_text = q_text.replace(m.real_value, m.pseudonym)
+        res_dict["original_question"] = q_text
+
     return RetrievalResult(**res_dict)
 
 

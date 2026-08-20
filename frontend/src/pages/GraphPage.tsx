@@ -191,7 +191,7 @@ export const GraphPage: React.FC = () => {
               <span className="graph-stat-pill">EDGES: <strong className="text-blue">{graphData?.edges.length || 0}</strong></span>
               {summary.top_connected_nodes.length > 0 && (
                 <span className="graph-stat-pill">
-                  TOP HUB: <strong className="text-emerald">{summary.top_connected_nodes[0].value}</strong> ({summary.top_connected_nodes[0].connection_count} links)
+                  MOST CONNECTED: <strong className="text-emerald">{summary.top_connected_nodes[0].value}</strong> ({summary.top_connected_nodes[0].connection_count} links)
                 </span>
               )}
             </div>
