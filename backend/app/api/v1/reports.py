@@ -1,5 +1,7 @@
 import uuid
 import re
+import json
+import hashlib
 import xml.etree.ElementTree as ET
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, status
@@ -25,8 +27,8 @@ class ReportCreateSchema(BaseModel):
 def parse_ufdr_file_content(content_str: str) -> List[str]:
     """
     Parses uploaded XML, JSON, or TXT content into a list of page text strings.
-    Handles standard UFDR XML tags (<page>, <report_page>, <item>), page delimiter comments,
-    or falls back to logical character chunking.
+    Tries proper parsers (json.loads, ET.fromstring) first per detected type,
+    falls back to regex heuristics and character chunking as last resort.
     """
     content_str = content_str.strip()
     if not content_str:
@@ -34,21 +36,43 @@ def parse_ufdr_file_content(content_str: str) -> List[str]:
 
     pages: List[str] = []
 
-    # 1. Try XML parsing
+    # 1. Try JSON parsing first if content looks like JSON
+    if content_str.startswith(("{", "[")):
+        try:
+            data = json.loads(content_str)
+            if isinstance(data, dict):
+                # Expect {"pages": [...]} or flatten all string values
+                if "pages" in data and isinstance(data["pages"], list):
+                    for p in data["pages"]:
+                        if isinstance(p, dict):
+                            pages.append(p.get("text_content", "") or p.get("content", "") or str(p))
+                        elif isinstance(p, str):
+                            pages.append(p)
+                else:
+                    pages.append(json.dumps(data, indent=2))
+            elif isinstance(data, list):
+                for item in data:
+                    pages.append(str(item) if not isinstance(item, str) else item)
+            if pages:
+                return pages
+        except (json.JSONDecodeError, ValueError):
+            pass
+
+    # 2. Try proper XML parsing (ElementTree) first for XML-like content
     if content_str.startswith("<") or "<?xml" in content_str:
         try:
-            # Look for explicit <page> or <report_page> or <section> tags using regex to avoid malformed XML errors
-            page_blocks = re.findall(r'<(?:page|report_page|section|item)[^>]*>(.*?)</(?:page|report_page|section|item)>', content_str, re.DOTALL | re.IGNORECASE)
-            if page_blocks:
-                for block in page_blocks:
-                    # Strip inner XML tags
-                    clean_text = re.sub(r'<[^>]+>', ' ', block).strip()
-                    if clean_text:
-                        pages.append(clean_text)
-
+            root = ET.fromstring(content_str)
+            # Look for page/section/item elements
+            for tag in ["page", "report_page", "section", "item"]:
+                elems = root.findall(f".//{tag}")
+                if not elems:
+                    elems = root.findall(f".//{tag.upper()}")
+                for elem in elems:
+                    text = ET.tostring(elem, encoding="unicode", method="text").strip()
+                    if text:
+                        pages.append(text)
+            # If no structured page elements, extract all text
             if not pages:
-                # Try parsing as standard ElementTree
-                root = ET.fromstring(content_str)
                 text_pieces = []
                 for elem in root.iter():
                     if elem.text and elem.text.strip():
@@ -56,10 +80,19 @@ def parse_ufdr_file_content(content_str: str) -> List[str]:
                 full_text = "\n".join(text_pieces)
                 if full_text:
                     pages = [full_text[i:i + 2500] for i in range(0, len(full_text), 2500)]
-        except Exception:
+        except ET.ParseError:
             pass
 
-    # 2. Try Page Delimiters (e.g. --- PAGE 1 --- or Page 1)
+        # 2b. Regex fallback for malformed XML only if ET failed
+        if not pages:
+            page_blocks = re.findall(r'<(?:page|report_page|section|item)[^>]*>(.*?)</(?:page|report_page|section|item)>', content_str, re.DOTALL | re.IGNORECASE)
+            if page_blocks:
+                for block in page_blocks:
+                    clean_text = re.sub(r'<[^>]+>', ' ', block).strip()
+                    if clean_text:
+                        pages.append(clean_text)
+
+    # 3. Try Page Delimiters (e.g. --- PAGE 1 --- or Page 1)
     if not pages:
         delim_split = re.split(r'(?:---+|\bPage\s+\d+\b|\bPAGE\s+\d+\b)', content_str, flags=re.IGNORECASE)
         for chunk in delim_split:
@@ -67,7 +100,7 @@ def parse_ufdr_file_content(content_str: str) -> List[str]:
             if len(chunk_clean) > 20:
                 pages.append(chunk_clean)
 
-    # 3. Fallback: Chunk long text every 2500 characters
+    # 4. Fallback: Chunk long text every 2500 characters
     if not pages:
         chunk_size = 2500
         for i in range(0, len(content_str), chunk_size):
@@ -83,6 +116,7 @@ async def upload_report_file(
 ):
     """
     Accepts real UFDR XML, TXT, or JSON file upload, parses pages, and stores in database.
+    Computes SHA-256 integrity hash for chain-of-custody compliance.
     """
     filename = file.filename or "Uploaded_UFDR_Report.xml"
     try:
@@ -90,6 +124,9 @@ async def upload_report_file(
         content_str = content_bytes.decode("utf-8", errors="ignore")
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {str(e)}")
+
+    # Compute SHA-256 integrity hash over raw uploaded bytes
+    content_hash = hashlib.sha256(content_bytes).hexdigest()
 
     parsed_pages = parse_ufdr_file_content(content_str)
 
@@ -99,6 +136,7 @@ async def upload_report_file(
         filename=filename,
         status="parsed",
         page_count=len(parsed_pages),
+        content_hash=content_hash,
     )
     db.add(report)
 
@@ -118,6 +156,7 @@ async def upload_report_file(
         "filename": report.filename,
         "status": report.status,
         "page_count": report.page_count,
+        "content_hash": report.content_hash,
         "created_at": report.created_at.isoformat(),
     }
 

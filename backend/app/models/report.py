@@ -11,6 +11,7 @@ class Report(Base):
     filename = Column(String, nullable=False)
     status = Column(String, default="parsed", nullable=False)
     page_count = Column(Integer, default=0, nullable=False)
+    content_hash = Column(String, nullable=True)  # SHA-256 hash of raw uploaded bytes
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     pages = relationship("ReportPage", back_populates="report", cascade="all, delete-orphan")

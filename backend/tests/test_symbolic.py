@@ -8,7 +8,7 @@ from app.symbolic.finding_rules import rule_page_cooccurrence_cluster
 from app.symbolic.engine import SymbolicEngine
 
 
-# 1. Test Relationship Derivation Rules (FACT classification & explanation)
+# 1. Test Relationship Derivation Rules (INFERENCE classification & explanation)
 def test_same_page_relationship_rule(test_db):
     report = Report(id="REP-SYM-001", filename="Symbolic_Test_Case.xml", status="extracted", page_count=1)
     test_db.add(report)
@@ -41,7 +41,7 @@ def test_same_page_relationship_rule(test_db):
     rel = derived_rels[0]
 
     assert rel["relationship_type"] == "USED"
-    assert rel["classification"] == "FACT"
+    assert rel["classification"] == "INFERENCE"
     assert rel["rule_id"] == "RULE-COOCCUR-PAGE-001"
     assert "Inspector Vikram" in rel["explanation"]
     assert "+91 9876543210" in rel["explanation"]
@@ -182,7 +182,7 @@ def test_api_symbolic_endpoints(client):
     assert len(rels_data["items"]) > 0
 
     first_rel = rels_data["items"][0]
-    assert first_rel["classification"] == "FACT"
+    assert first_rel["classification"] == "INFERENCE"
     assert len(first_rel["explanation"]) > 0
     assert len(first_rel["rule_id"]) > 0
 

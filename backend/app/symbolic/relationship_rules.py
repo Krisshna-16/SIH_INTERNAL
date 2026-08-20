@@ -25,10 +25,11 @@ def derive_relationship_type(t1: str, t2: str) -> str:
 
 def rule_same_page_cooccurrence(evidence_list: List[Evidence], max_pairs_per_page: int = 1500) -> List[Dict[str, Any]]:
     """
-    Derives direct FACT relationships between evidence items co-occurring on the same source page.
+    Derives INFERENCE relationships between evidence items co-occurring on the same source page.
     
     EXPLAINABLE DERIVATION:
-    Co-occurrence on the exact same page of a forensic report represents a direct physical observation (FACT).
+    Co-occurrence on the same page is observed, but the relationship TYPE (USED, LOCATED_AT, etc.)
+    is inferred from entity-type pairing, not directly observed. Classified as INFERENCE.
     """
     if not evidence_list:
         return []
@@ -74,12 +75,12 @@ def rule_same_page_cooccurrence(evidence_list: List[Evidence], max_pairs_per_pag
                     "source_evidence_id": e1.evidence_id,
                     "target_evidence_id": e2.evidence_id,
                     "relationship_type": rel_type,
-                    "classification": "FACT",  # Direct co-occurrence observation
+                    "classification": "INFERENCE",  # Relationship type inferred from entity-type pairing
                     "rule_id": RULE_COOCCUR_SAME_PAGE_ID,
                     "explanation": explanation,
                     "confidence": min(e1.confidence, e2.confidence),
                 })
                 page_rel_count += 1
 
-    logger.info(f"Rule '{RULE_COOCCUR_SAME_PAGE_ID}' derived {len(relationships)} FACT relationships.")
+    logger.info(f"Rule '{RULE_COOCCUR_SAME_PAGE_ID}' derived {len(relationships)} INFERENCE relationships.")
     return relationships

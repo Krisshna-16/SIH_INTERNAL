@@ -15,6 +15,14 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev_mha_ufdr_secret_key_change_in_
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # 8 hours
 
+# SECURITY: Fail loudly if the default dev secret is used in non-development environments
+_current_env = os.getenv("ENV", "development").strip().lower()
+if JWT_SECRET_KEY == "dev_mha_ufdr_secret_key_change_in_prod" and _current_env != "development":
+    raise RuntimeError(
+        f"FATAL: JWT_SECRET_KEY is using the insecure default in ENV='{_current_env}'. "
+        "Set a strong, unique JWT_SECRET_KEY environment variable before running in production."
+    )
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifies a raw password against its hash."""

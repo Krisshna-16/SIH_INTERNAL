@@ -166,3 +166,102 @@ def test_privacy_audit_logging(client, test_db):
     audit_logs = test_db.query(AuditLog).filter(AuditLog.report_id == "REP-PRIV-006").all()
     actions = [a.action for a in audit_logs]
     assert "LLM_QUERY_EXECUTED" in actions
+
+
+# 8. REGRESSION TEST: original_question must be pseudonymized (Issue P1 - CRITICAL PII leak fix)
+def test_original_question_pseudonymized_before_external(test_db):
+    """
+    Verifies that `original_question` containing real PII (names, phone numbers)
+    is pseudonymized by `pseudonymize_retrieval_result()` BEFORE it reaches
+    `minimize_for_external()` and the external LLM payload.
+    
+    This test would have FAILED before commit fixing pseudonymizer.py.
+    """
+    report = Report(id="REP-PRIV-007", filename="PII_Leak_Test.xml", status="extracted", page_count=1)
+    test_db.add(report)
+    test_db.commit()
+
+    # RetrievalResult with PII in both evidence AND original_question
+    raw_rr = RetrievalResult(
+        query_id="QRY-LEAK-1",
+        report_id="REP-PRIV-007",
+        original_question="What did Inspector Vikram do at +91 9876543210?",
+        intent=QueryIntent(intent_type=QueryIntentType.COMMUNICATION_QUERY, confidence=0.9),
+        resolved_entities=[],
+        evidence=[
+            {"evidence_id": "EVT-LEAK1", "evidence_type": "PERSON", "value": "Inspector Vikram", "source_page": 1, "source_report": "PII_Leak_Test.xml"},
+            {"evidence_id": "EVT-LEAK2", "evidence_type": "PHONE", "value": "+91 9876543210", "source_page": 1, "source_report": "PII_Leak_Test.xml"},
+        ],
+        relationships=[],
+        findings=[],
+        timeline_entries=[],
+        status=RetrievalStatus.RESULTS_FOUND,
+        retrieval_summary="Summary",
+    )
+
+    pseudo_rr = pseudonymize_retrieval_result(raw_rr, test_db)
+
+    # CRITICAL ASSERTION: original_question must NOT contain raw PII
+    assert "Inspector Vikram" not in pseudo_rr.original_question, \
+        f"PII LEAK: Real name 'Inspector Vikram' found in pseudonymized original_question: '{pseudo_rr.original_question}'"
+    assert "+91 9876543210" not in pseudo_rr.original_question, \
+        f"PII LEAK: Real phone '+91 9876543210' found in pseudonymized original_question: '{pseudo_rr.original_question}'"
+
+    # Verify pseudonyms ARE present in the question
+    assert "PERSON_001" in pseudo_rr.original_question
+    assert "PHONE_001" in pseudo_rr.original_question
+
+    # Also verify the minimized payload propagates the pseudonymized question
+    minimized = minimize_for_external(pseudo_rr)
+    assert "Inspector Vikram" not in minimized["original_question"]
+    assert "PERSON_001" in minimized["original_question"]
+
+
+# 9. EDGE CASE: PII in question exists in DB mappings but NOT in this retrieval's evidence
+def test_question_pii_from_prior_query_still_redacted(test_db):
+    """
+    Scenario: A prior query caused 'Ankit Verma' to be pseudonymized as PERSON_001
+    in this report. Now a NEW query mentions 'Ankit Verma' in the question, but the
+    retrieval result for this query does NOT contain Ankit Verma in its evidence set.
+    
+    The question must STILL be redacted because the PseudonymMapping exists in the DB.
+    """
+    report = Report(id="REP-PRIV-008", filename="Cross_Query_PII.xml", status="extracted", page_count=1)
+    test_db.add(report)
+    test_db.commit()
+
+    # Simulate a PRIOR query that created a pseudonym mapping for "Ankit Verma"
+    get_or_create_pseudonym("REP-PRIV-008", "Ankit Verma", "PERSON", "EVT-OLD1", test_db)
+    # Also for a phone number
+    get_or_create_pseudonym("REP-PRIV-008", "+91 1111111111", "PHONE", "EVT-OLD2", test_db)
+
+    # New query: question mentions Ankit Verma, but evidence set contains DIFFERENT people
+    new_rr = RetrievalResult(
+        query_id="QRY-CROSS-1",
+        report_id="REP-PRIV-008",
+        original_question="Did Ankit Verma contact +91 1111111111 last week?",
+        intent=QueryIntent(intent_type=QueryIntentType.COMMUNICATION_QUERY, confidence=0.9),
+        resolved_entities=[],
+        evidence=[
+            # NOTE: Evidence contains Priya Singh, NOT Ankit Verma
+            {"evidence_id": "EVT-NEW1", "evidence_type": "PERSON", "value": "Priya Singh", "source_page": 2, "source_report": "Cross_Query_PII.xml"},
+        ],
+        relationships=[],
+        findings=[],
+        timeline_entries=[],
+        status=RetrievalStatus.RESULTS_FOUND,
+        retrieval_summary="Summary",
+    )
+
+    pseudo_rr = pseudonymize_retrieval_result(new_rr, test_db)
+
+    # CRITICAL: Ankit Verma must be redacted even though they're not in this retrieval's evidence
+    assert "Ankit Verma" not in pseudo_rr.original_question, \
+        f"CROSS-QUERY PII LEAK: 'Ankit Verma' found in question: '{pseudo_rr.original_question}'"
+    assert "+91 1111111111" not in pseudo_rr.original_question, \
+        f"CROSS-QUERY PII LEAK: '+91 1111111111' found in question: '{pseudo_rr.original_question}'"
+
+    # The DB-sourced pseudonym should be present
+    assert "PERSON_001" in pseudo_rr.original_question
+    assert "PHONE_001" in pseudo_rr.original_question
+
