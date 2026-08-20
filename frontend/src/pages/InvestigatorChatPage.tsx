@@ -129,7 +129,7 @@ export const InvestigatorChatPage: React.FC = () => {
       <header className="page-header">
         <div className="header-title-block">
           <span className="phase-tag">Phase 8 / 9 | Grounded LLM & Privacy Gateway</span>
-          <h2>AI Co-Analyst Conversation</h2>
+          <h2>TRACE-X Co-Analyst Conversation</h2>
           <p className="subtitle">
             Grounded natural-language answer generation with mandatory pseudonymization & opt-in external AI controls.
           </p>
@@ -200,8 +200,7 @@ export const InvestigatorChatPage: React.FC = () => {
         <div className="chat-messages-container">
           {chatMessages.length === 0 ? (
             <div className="chat-welcome-placeholder font-mono">
-              <span className="welcome-icon">💬</span>
-              <h4>Investigator AI Co-Analyst Ready</h4>
+              <h4>Investigator TRACE-X Co-Analyst Ready</h4>
               <p>Ask any question below or click a quick prompt to analyze grounded evidence records with zero-trust privacy protection.</p>
             </div>
           ) : (
@@ -308,8 +307,7 @@ export const InvestigatorChatPage: React.FC = () => {
                 disabled={!selectedReportId || !questionInput.trim() || loading}
                 className="btn-cyber-primary"
               >
-                <span className="btn-icon">⚡</span>
-                <span>{loading ? 'ANALYZING...' : 'ASK AI CO-ANALYST'}</span>
+                <span>{loading ? 'ANALYZING...' : 'ASK TRACE-X'}</span>
               </button>
             </div>
           </div>

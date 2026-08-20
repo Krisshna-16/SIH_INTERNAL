@@ -41,14 +41,13 @@ export const AppShell: React.FC = () => {
         <header className="topbar">
           <div className="topbar-left">
             <div className="topbar-brand">
-              UFDR Analysis Platform <span className="topbar-sub font-mono">// MHA Smart Automation</span>
+              TRACE-X <span className="topbar-sub font-mono">// HYBRID AI INVESTIGATOR</span>
             </div>
           </div>
 
           <div className="topbar-right">
-            <div className="sys-status-badge" title="Local Forensic Engine Operational">
-              <span className="sys-pulse" />
-              <span className="sys-text font-mono">SYS.OK</span>
+            <div className="sys-status-badge font-mono" title="Local Forensic Engine Operational">
+              <span className="sys-text">SYS_ACTIVE</span>
             </div>
 
             {report && (

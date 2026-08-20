@@ -96,16 +96,17 @@ export const ReportsListPage: React.FC = () => {
       {/* Topbar Header */}
       <header className="topbar">
         <div className="topbar-left">
-          <div className="sidebar-brand-icon-box" style={{ marginRight: '0.75rem' }}>
-            <span style={{ fontSize: '1.4rem' }}>🛡️</span>
+          <div className="sidebar-brand-icon-box" style={{ marginRight: '0.75rem', display: 'flex', alignItems: 'center' }}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style={{ color: '#64748b' }}>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
           </div>
-          <span className="topbar-brand">UFDR Analysis Platform</span>
-          <span className="topbar-sub">// MHA Smart Automation</span>
+          <span className="topbar-brand">TRACE-X</span>
+          <span className="topbar-sub">// HYBRID AI INVESTIGATOR</span>
         </div>
         <div className="topbar-right">
-          <div className="sys-status-badge">
-            <span className="sys-pulse" />
-            <span className="sys-text">SYS.OK</span>
+          <div className="sys-status-badge font-mono">
+            <span className="sys-text">SYS_ACTIVE</span>
           </div>
         </div>
       </header>
@@ -123,7 +124,7 @@ export const ReportsListPage: React.FC = () => {
 
         {errorMessage && (
           <div className="shared-error-banner">
-            <span>⚠️ {errorMessage}</span>
+            <span>[ERROR] {errorMessage}</span>
             <button className="btn-text-action" onClick={() => setErrorMessage(null)}>Dismiss</button>
           </div>
         )}
@@ -140,7 +141,7 @@ export const ReportsListPage: React.FC = () => {
               onClick={handleSeedDemoCase}
               disabled={uploading}
             >
-              ⚡ Instant Demo Case
+              Instant Demo Case
             </button>
           </div>
 
@@ -158,7 +159,11 @@ export const ReportsListPage: React.FC = () => {
               accept=".xml,.ufdr,.txt,.json,.text"
               style={{ display: 'none' }}
             />
-            <div className="dropzone-icon">📁</div>
+            <div className="dropzone-icon" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
+              </svg>
+            </div>
             {selectedFile ? (
               <div className="selected-file-info">
                 <span className="file-name font-mono">{selectedFile.name}</span>
@@ -182,7 +187,6 @@ export const ReportsListPage: React.FC = () => {
                 }}
                 disabled={uploading}
               >
-                <span className="btn-icon">🚀</span>
                 <span>{uploading ? 'PARSING XML & INGESTING…' : 'INGEST REPORT FILE'}</span>
               </button>
 
@@ -206,7 +210,6 @@ export const ReportsListPage: React.FC = () => {
           <LoadingSpinner message="Retrieving ingested forensic reports…" />
         ) : reports.length === 0 ? (
           <EmptyState
-            icon="📂"
             title="No reports ingested yet"
             description="Drag and drop a UFDR extraction file above to begin neural NER and symbolic correlation analysis."
           />
@@ -250,7 +253,7 @@ export const ReportsListPage: React.FC = () => {
                             navigate(`/reports/${r.id}/dashboard`);
                           }}
                         >
-                          Open Dashboard →
+                          Open Dashboard
                         </button>
                       </td>
                     </tr>

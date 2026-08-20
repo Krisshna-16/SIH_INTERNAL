@@ -103,7 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       {
         to: 'chat',
-        label: 'AI Co-Analyst',
+        label: 'TRACE-X Co-Analyst',
         iconSvg: (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -150,8 +150,8 @@ export const Sidebar: React.FC = () => {
           </svg>
         </div>
         <div className="sidebar-brand-text">
-          <span className="brand-main">MHA UFDR</span>
-          <span className="brand-sub">COMMAND CENTER</span>
+          <span className="brand-main">TRACE-X</span>
+          <span className="brand-sub">INVESTIGATOR</span>
         </div>
       </div>
 

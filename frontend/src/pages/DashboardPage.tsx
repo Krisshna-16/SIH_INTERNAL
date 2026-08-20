@@ -89,10 +89,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           <div className="button-group">
             <button onClick={onNavigateToEntities} className="btn-secondary">
-              ⚡ Extract Entities (Phase 2)
+              Extract Entities (Phase 2)
             </button>
             <button onClick={onNavigateToEvidence} className="btn-primary">
-              🔍 Explore Evidence DB (Phase 3)
+              Explore Evidence DB (Phase 3)
             </button>
           </div>
         </div>

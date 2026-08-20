@@ -129,15 +129,17 @@ export const GraphPage: React.FC = () => {
   };
 
   // Compute circular layout coordinates for SVG rendering
+  // Compute concentric alternating circular layout coordinates for SVG rendering
   const getLayoutPositions = (nodes: GraphNode[]) => {
     const positions: Record<string, { x: number; y: number }> = {};
     const count = nodes.length;
-    const centerX = 360;
+    const centerX = 425;
     const centerY = 230;
-    const radius = Math.min(centerX, centerY) - 50;
 
     nodes.forEach((node, i) => {
       const angle = (2 * Math.PI * i) / (count || 1);
+      // Alternate radius for odd and even nodes to distribute them into two concentric rings
+      const radius = i % 2 === 0 ? 190 : 110;
       positions[node.id] = {
         x: centerX + radius * Math.cos(angle),
         y: centerY + radius * Math.sin(angle),
@@ -245,75 +247,134 @@ export const GraphPage: React.FC = () => {
             <span className="text-small text-muted font-mono">Click node to expand neighborhood • Click edge to inspect explanation</span>
           </div>
 
-          {loading ? (
-            <LoadingSpinner message="Building NetworkX graph structure..." />
-          ) : !graphData || graphData.nodes.length === 0 ? (
-            <EmptyState
-              icon="🕸️"
-              title="No Network Relationships Found"
-              description={selectedReportId ? 'Try adjusting the min confidence slider or select ALL relationship types.' : 'Please select a report.'}
-            />
-          ) : (
-            <div className="svg-canvas-wrapper">
-              <svg width="720" height="460" className="graph-svg">
-                {/* Draw Edges */}
-                {graphData.edges.map((edge) => {
-                  const sourcePos = nodePositions[edge.source];
-                  const targetPos = nodePositions[edge.target];
-                  if (!sourcePos || !targetPos) return null;
+          <div className="graph-canvas-relative-container" style={{ position: 'relative', minHeight: '480px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            {loading && !graphData && (
+              <LoadingSpinner message="Building NetworkX graph structure..." />
+            )}
 
-                  const isFact = edge.classification === 'FACT';
-                  const midX = (sourcePos.x + targetPos.x) / 2;
-                  const midY = (sourcePos.y + targetPos.y) / 2;
+            {loading && graphData && (
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                background: 'rgba(248, 250, 252, 0.85)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+                borderRadius: 'var(--radius)'
+              }}>
+                <LoadingSpinner message="Updating graph network..." />
+              </div>
+            )}
 
-                  return (
-                    <g key={edge.id} className="svg-edge-group" onClick={() => handleEdgeClick(edge)}>
-                      <line
-                        x1={sourcePos.x}
-                        y1={sourcePos.y}
-                        x2={targetPos.x}
-                        y2={targetPos.y}
-                        stroke={isFact ? '#38bdf8' : '#c084fc'}
-                        strokeWidth={2}
-                        strokeDasharray={isFact ? 'none' : '5,5'}
-                        opacity={Math.max(edge.confidence, 0.4)}
-                      />
-                      <text x={midX} y={midY - 4} className="edge-text-label font-mono">
-                        {edge.relationship_type}
-                      </text>
-                    </g>
-                  );
-                })}
+            {!loading && (!graphData || graphData.nodes.length === 0) && (
+              <EmptyState
+                title="No Network Relationships Found"
+                description={selectedReportId ? 'Try adjusting the min confidence slider or select ALL relationship types.' : 'Please select a report.'}
+              />
+            )}
 
-                {/* Draw Nodes */}
-                {graphData.nodes.map((node) => {
-                  const pos = nodePositions[node.id];
-                  if (!pos) return null;
-                  const isSelected = selectedNodeId === node.id;
-                  const nodeColor = getNodeColor(node.evidence_type);
+            {graphData && graphData.nodes.length > 0 && (
+              <div className="svg-canvas-wrapper" style={{ width: '100%', overflow: 'hidden', backgroundColor: '#f8fafc', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                <svg width="100%" height="480" viewBox="0 0 850 480" className="graph-svg">
+                  {/* Draw Edges */}
+                  {graphData.edges.map((edge, i) => {
+                    const sourcePos = nodePositions[edge.source];
+                    const targetPos = nodePositions[edge.target];
+                    if (!sourcePos || !targetPos) return null;
 
-                  return (
-                    <g
-                      key={node.id}
-                      className="svg-node-group"
-                      onClick={() => handleNodeClick(node)}
-                      transform={`translate(${pos.x}, ${pos.y})`}
-                    >
-                      <circle
-                        r={isSelected ? 18 : 14}
-                        fill={nodeColor}
-                        stroke={isSelected ? '#ffffff' : '#0f172a'}
-                        strokeWidth={isSelected ? 3 : 1.5}
-                      />
-                      <text y={28} className="node-text-label font-mono">
-                        {node.value} ({node.evidence_type})
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-            </div>
-          )}
+                    const isFact = edge.classification === 'FACT';
+                    
+                    // Alternate labels along the path (35%, 50%, 65%) to avoid center stacking overlaps
+                    const ratio = i % 3 === 0 ? 0.35 : i % 3 === 1 ? 0.5 : 0.65;
+                    const midX = sourcePos.x + (targetPos.x - sourcePos.x) * ratio;
+                    const midY = sourcePos.y + (targetPos.y - sourcePos.y) * ratio;
+                    
+                    // Faint background capsule width based on label text length
+                    const textWidth = edge.relationship_type.length * 6.5 + 8;
+
+                    return (
+                      <g key={edge.id} className="svg-edge-group" onClick={() => handleEdgeClick(edge)} style={{ cursor: 'pointer' }}>
+                        <line
+                          x1={sourcePos.x}
+                          y1={sourcePos.y}
+                          x2={targetPos.x}
+                          y2={targetPos.y}
+                          stroke={isFact ? '#38bdf8' : '#c084fc'}
+                          strokeWidth={2}
+                          strokeDasharray={isFact ? 'none' : '4,4'}
+                          opacity={Math.max(edge.confidence, 0.45)}
+                        />
+                        {/* Background mask pill so intersecting lines don't clutter the text */}
+                        <rect
+                          x={midX - textWidth / 2}
+                          y={midY - 8}
+                          width={textWidth}
+                          height={15}
+                          fill="#f8fafc"
+                          rx="3"
+                        />
+                        <text
+                          x={midX}
+                          y={midY + 3}
+                          textAnchor="middle"
+                          className="edge-text-label font-mono"
+                          style={{ fontSize: '0.62rem', fill: '#0f172a', fontWeight: 700 }}
+                        >
+                          {edge.relationship_type}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* Draw Nodes */}
+                  {graphData.nodes.map((node) => {
+                    const pos = nodePositions[node.id];
+                    if (!pos) return null;
+                    const isSelected = selectedNodeId === node.id;
+                    const nodeColor = getNodeColor(node.evidence_type);
+
+                    return (
+                      <g
+                        key={node.id}
+                        className="svg-node-group"
+                        onClick={() => handleNodeClick(node)}
+                        transform={`translate(${pos.x}, ${pos.y})`}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <circle
+                          r={isSelected ? 16 : 12}
+                          fill={nodeColor}
+                          stroke={isSelected ? '#2563eb' : '#0f172a'}
+                          strokeWidth={isSelected ? 2.5 : 1.5}
+                        />
+                        {/* Center value below node and split type onto second line to save horizontal space */}
+                        <text
+                          y={24}
+                          textAnchor="middle"
+                          className="node-text-label font-mono"
+                          style={{ fontSize: '0.68rem', fill: '#0f172a', fontWeight: 700 }}
+                        >
+                          {node.value}
+                        </text>
+                        <text
+                          y={36}
+                          textAnchor="middle"
+                          className="node-text-label-sub font-mono"
+                          style={{ fontSize: '0.58rem', fill: '#475569' }}
+                        >
+                          {node.evidence_type}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Edge Explanation Side Panel */}

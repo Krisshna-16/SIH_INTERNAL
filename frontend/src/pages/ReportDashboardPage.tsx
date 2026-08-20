@@ -150,22 +150,22 @@ export const ReportDashboardPage: React.FC = () => {
 
   const getCategoryIcon = (cat: string) => {
     switch (cat.toUpperCase()) {
-      case 'PERSON': return '👤';
-      case 'PHONE': return '📱';
-      case 'EMAIL': return '✉️';
-      case 'LOCATION': return '📍';
-      case 'DATE': return '📅';
-      case 'URL': return '🌐';
-      case 'IP_ADDRESS': return '💻';
-      case 'ORG': return '🏢';
-      default: return '📄';
+      case 'PERSON': return '[PER]';
+      case 'PHONE': return '[PHN]';
+      case 'EMAIL': return '[EML]';
+      case 'LOCATION': return '[LOC]';
+      case 'DATE': return '[DAT]';
+      case 'URL': return '[URL]';
+      case 'IP_ADDRESS': return '[IP]';
+      case 'ORG': return '[ORG]';
+      default: return '[DOC]';
     }
   };
 
-  const stepIcon = (s: PipelineStep) => (s === 'done' ? '✓' : s === 'error' ? '✗' : s === 'running' ? '⏳' : '○');
+  const stepIcon = (s: PipelineStep) => (s === 'done' ? '[OK]' : s === 'error' ? '[ERR]' : s === 'running' ? '[RUN]' : '[ - ]');
 
   if (loading) return <LoadingSpinner message="Initializing Mission Control metrics..." />;
-  if (!report) return <EmptyState icon="❌" title="Report not found" description={`No case report with ID "${reportId}" exists.`} />;
+  if (!report) return <EmptyState title="Report not found" description={`No case report with ID "${reportId}" exists.`} />;
 
   const isRunning = pipeline.extract === 'running' || pipeline.consolidate === 'running' || pipeline.analyze === 'running';
 
@@ -187,7 +187,6 @@ export const ReportDashboardPage: React.FC = () => {
             onClick={runFullPipeline}
             disabled={isRunning}
           >
-            <span className="btn-icon">⚡</span>
             <span>{isRunning ? 'EXECUTING PIPELINE (6s)...' : 'EXECUTE FULL PIPELINE'}</span>
           </button>
         </div>
@@ -235,46 +234,41 @@ export const ReportDashboardPage: React.FC = () => {
 
       {/* Key Metric Cards Bar */}
       <div className="metrics-grid">
-        <div className="metric-card card-cyan" onClick={() => navigate(`/reports/${reportId}/evidence`)}>
+        <div className="metric-card" onClick={() => navigate(`/reports/${reportId}/evidence`)}>
           <div className="metric-header">
             <span className="metric-lbl">EVIDENCE RECORDS</span>
-            <span className="metric-icon">🔍</span>
           </div>
           <span className="metric-val font-mono">{summary?.total_evidence ?? 0}</span>
           <span className="metric-sub font-mono">Indexed Ground-Truth</span>
         </div>
 
-        <div className="metric-card card-blue">
+        <div className="metric-card">
           <div className="metric-header">
             <span className="metric-lbl">SOURCE PAGES</span>
-            <span className="metric-icon">📄</span>
           </div>
           <span className="metric-val font-mono">{summary?.page_count ?? report.page_count}</span>
           <span className="metric-sub font-mono">UFDR Parsed Pages</span>
         </div>
 
-        <div className="metric-card card-purple">
+        <div className="metric-card">
           <div className="metric-header">
             <span className="metric-lbl">EVIDENCE CATEGORIES</span>
-            <span className="metric-icon">🧬</span>
           </div>
           <span className="metric-val font-mono">{summary ? Object.keys(summary.type_breakdown).length : 0}</span>
           <span className="metric-sub font-mono">Entity Types</span>
         </div>
 
-        <div className="metric-card card-emerald" onClick={() => navigate(`/reports/${reportId}/relationships`)}>
+        <div className="metric-card" onClick={() => navigate(`/reports/${reportId}/relationships`)}>
           <div className="metric-header">
             <span className="metric-lbl">RELATIONSHIPS</span>
-            <span className="metric-icon">🔗</span>
           </div>
           <span className="metric-val font-mono">{symbolicSummary?.total_relationships ?? 0}</span>
           <span className="metric-sub font-mono">Derived Triplets</span>
         </div>
 
-        <div className="metric-card card-rose" onClick={() => navigate(`/reports/${reportId}/findings`)}>
+        <div className="metric-card" onClick={() => navigate(`/reports/${reportId}/findings`)}>
           <div className="metric-header">
             <span className="metric-lbl">FLAGGED FINDINGS</span>
-            <span className="metric-icon">🚩</span>
           </div>
           <span className="metric-val font-mono">{symbolicSummary?.total_findings ?? 0}</span>
           <span className="metric-sub font-mono">Rule Anomalies</span>
@@ -293,7 +287,7 @@ export const ReportDashboardPage: React.FC = () => {
                 <span className="text-small text-muted font-mono">Ground-Truth Breakdown</span>
               </div>
               <button className="btn-text-action" onClick={() => navigate(`/reports/${reportId}/evidence`)}>
-                Explore Vault →
+                Explore Vault
               </button>
             </div>
 
@@ -304,7 +298,7 @@ export const ReportDashboardPage: React.FC = () => {
                   return (
                     <div key={type} className="cat-item-card">
                       <div className="cat-item-header">
-                        <span className="cat-icon">{getCategoryIcon(type)}</span>
+                        <span className="cat-icon" style={{ fontSize: '0.75rem', color: '#64748b' }}>{getCategoryIcon(type)}</span>
                         <span className="cat-name font-mono">{type}</span>
                         <span className="cat-count-badge font-mono">{count}</span>
                       </div>
@@ -332,42 +326,38 @@ export const ReportDashboardPage: React.FC = () => {
           <div className="quick-modules-grid">
             <div className="quick-module-card" onClick={() => navigate(`/reports/${reportId}/entities`)}>
               <div className="qm-header">
-                <span className="qm-icon">🧬</span>
                 <span className="qm-phase font-mono">PHASE 2</span>
               </div>
               <h4>Neural Entity Index</h4>
               <p>spaCy NLP entity recognition with character-offset provenance.</p>
-              <span className="qm-link font-mono">View Entities →</span>
+              <span className="qm-link font-mono">View Entities</span>
             </div>
 
             <div className="quick-module-card" onClick={() => navigate(`/reports/${reportId}/timeline`)}>
               <div className="qm-header">
-                <span className="qm-icon">📅</span>
                 <span className="qm-phase font-mono">PHASE 5</span>
               </div>
               <h4>Timeline Stream</h4>
               <p>Chronological event progression with time-window filtering.</p>
-              <span className="qm-link font-mono">View Timeline →</span>
+              <span className="qm-link font-mono">View Timeline</span>
             </div>
 
             <div className="quick-module-card" onClick={() => navigate(`/reports/${reportId}/graph`)}>
               <div className="qm-header">
-                <span className="qm-icon">🕸️</span>
                 <span className="qm-phase font-mono">PHASE 6</span>
               </div>
               <h4>Knowledge Graph</h4>
               <p>Interactive entity node-edge network with neighborhood expansion.</p>
-              <span className="qm-link font-mono">View Graph →</span>
+              <span className="qm-link font-mono">View Graph</span>
             </div>
 
             <div className="quick-module-card" onClick={() => navigate(`/reports/${reportId}/chat`)}>
               <div className="qm-header">
-                <span className="qm-icon">💬</span>
                 <span className="qm-phase font-mono">PHASE 8/9</span>
               </div>
-              <h4>AI Co-Analyst</h4>
+              <h4>TRACE-X Co-Analyst</h4>
               <p>Grounded Q&A assistant with mandatory identity pseudonymization.</p>
-              <span className="qm-link font-mono">Launch Assistant →</span>
+              <span className="qm-link font-mono">Launch Assistant</span>
             </div>
           </div>
         </div>
@@ -377,7 +367,6 @@ export const ReportDashboardPage: React.FC = () => {
           {/* Executive Case Info Panel */}
           <div className="card intel-panel-card">
             <div className="intel-panel-header">
-              <span className="intel-icon">⚡</span>
               <h3>Executive Insights</h3>
             </div>
             <div className="intel-body">
@@ -403,7 +392,6 @@ export const ReportDashboardPage: React.FC = () => {
           {/* Privacy & Security Status Stream */}
           <div className="card intel-panel-card">
             <div className="intel-panel-header">
-              <span className="intel-icon">🔒</span>
               <h3>Privacy & Compliance Stream</h3>
             </div>
             <div className="privacy-stream-list">
@@ -434,7 +422,7 @@ export const ReportDashboardPage: React.FC = () => {
 
             <div className="panel-footer">
               <button className="btn-secondary btn-block btn-sm font-mono" onClick={() => navigate(`/reports/${reportId}/privacy`)}>
-                View Audit Trail →
+                View Audit Trail
               </button>
             </div>
           </div>
@@ -442,7 +430,6 @@ export const ReportDashboardPage: React.FC = () => {
           {/* Prepared AI Assistant Quick Prompts */}
           <div className="card intel-panel-card">
             <div className="intel-panel-header">
-              <span className="intel-icon">💬</span>
               <h3>Quick AI Prompts</h3>
             </div>
             <div className="quick-prompts-list">
@@ -451,21 +438,18 @@ export const ReportDashboardPage: React.FC = () => {
                 onClick={() => navigate(`/reports/${reportId}/chat`)}
               >
                 <span>"Who did Inspector Vikram contact?"</span>
-                <span className="prompt-arrow">→</span>
               </button>
               <button
                 className="prompt-launch-btn"
                 onClick={() => navigate(`/reports/${reportId}/chat`)}
               >
                 <span>"What happened on 12 March 2024?"</span>
-                <span className="prompt-arrow">→</span>
               </button>
               <button
                 className="prompt-launch-btn"
                 onClick={() => navigate(`/reports/${reportId}/chat`)}
               >
                 <span>"Summarize suspicious communication patterns"</span>
-                <span className="prompt-arrow">→</span>
               </button>
             </div>
           </div>
