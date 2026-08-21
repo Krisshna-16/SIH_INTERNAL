@@ -16,7 +16,7 @@ from app.auth.dependencies import get_current_user
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging
-from app.db.session import engine, Base
+from app.db.session import engine, Base, ensure_sqlite_schema_up_to_date
 import app.models  # Ensure all SQLAlchemy models are registered for metadata creation
 
 from scripts.seed_demo_user import seed_demo_user
@@ -29,6 +29,9 @@ setup_logging()
 
 # Create DB tables if they don't exist
 Base.metadata.create_all(bind=engine)
+
+# Safely check and add any missing columns to SQLite schema
+ensure_sqlite_schema_up_to_date(engine)
 
 # Automatically seed default demo user and report data on startup if missing
 try:
