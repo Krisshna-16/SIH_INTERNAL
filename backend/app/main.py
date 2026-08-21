@@ -45,10 +45,11 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Configure CORS Middleware using configured allowed origins
+# Configure CORS Middleware to allow all localhost/127.0.0.1 ports dynamically
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
