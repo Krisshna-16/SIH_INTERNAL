@@ -25,7 +25,6 @@ export const FindingsPage: React.FC = () => {
   const [findingDetails, setFindingDetails] = useState<Record<string, FindingItem>>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [analyzing, setAnalyzing] = useState<boolean>(false);
-  const [hasExecuted, setHasExecuted] = useState<boolean>(false);
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +65,12 @@ export const FindingsPage: React.FC = () => {
     }
   }, [selectedReportId, selectedSeverity, currentPage, pageSize]);
 
+  useEffect(() => {
+    if (selectedReportId) {
+      loadFindings();
+    }
+  }, [selectedReportId, selectedSeverity, currentPage, loadFindings]);
+
   const handleRunAnalysis = async () => {
     if (!selectedReportId) return;
     setAnalyzing(true);
@@ -73,18 +78,17 @@ export const FindingsPage: React.FC = () => {
     setAnalysisStep('Loading Ground-Truth Evidence & Initializing Symbolic Rules...');
 
     try {
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 600));
       setAnalysisStep('Evaluating Page Co-occurrence & Communication Burst Patterns...');
 
       const apiPromise = runSymbolicAnalysis(selectedReportId);
 
-      await new Promise((r) => setTimeout(r, 1100));
+      await new Promise((r) => setTimeout(r, 800));
       setAnalysisStep('Deriving Deterministic FACT & INFERENCE Anomaly Triplets...');
 
       await apiPromise;
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 400));
 
-      setHasExecuted(true);
       setCurrentPage(1);
       await loadFindings();
     } catch (err: any) {
@@ -115,11 +119,11 @@ export const FindingsPage: React.FC = () => {
   const getSeverityBadgeClass = (severity: string) => {
     switch (severity.toUpperCase()) {
       case 'HIGH':
-        return 'severity-high';
+        return 'severity-badge-high';
       case 'MEDIUM':
-        return 'severity-med';
+        return 'severity-badge-medium';
       default:
-        return 'severity-low';
+        return 'severity-badge-low';
     }
   };
 
@@ -129,7 +133,7 @@ export const FindingsPage: React.FC = () => {
     <div className="findings-page-container">
       <header className="page-header">
         <div className="header-title-block">
-          <span className="phase-tag">Phase 4 | Symbolic AI Rule Engine</span>
+          <span className="phase-tag">FORENSIC INTELLIGENCE // PHASE 4 ANOMALY FINDINGS</span>
           <h2>Flagged Anomaly Findings</h2>
           <p className="subtitle">
             Explainable investigative flags derived from deterministic correlation rules operating on evidence ground-truth.
@@ -138,20 +142,19 @@ export const FindingsPage: React.FC = () => {
       </header>
 
       {/* Control Bar */}
-      <div className="card control-card">
-        <div className="control-row">
-          <div className="control-group">
-            <label htmlFor="fnd-report-select" className="font-mono">SELECT CASE REPORT:</label>
+      <div className="card control-card" style={{ marginBottom: '1.25rem' }}>
+        <div className="control-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div className="control-group" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <label htmlFor="fnd-report-select" className="font-mono text-muted text-small">SELECT CASE REPORT:</label>
             <select
               id="fnd-report-select"
               value={selectedReportId}
               onChange={(e) => {
                 setSelectedReportId(e.target.value);
-                setHasExecuted(false);
-                setFindings([]);
                 setCurrentPage(1);
               }}
               className="select-report font-mono"
+              style={{ background: '#0f172a', border: '1px solid #334155', color: '#f8fafc', padding: '0.5rem 0.8rem', borderRadius: '6px' }}
             >
               {reports.length === 0 ? (
                 <option value="">No reports available</option>
@@ -180,84 +183,107 @@ export const FindingsPage: React.FC = () => {
 
       {error && <ErrorBanner message={error} />}
 
-      {/* Severity Filter (Only shown if executed) */}
-      {hasExecuted && (
-        <div className="card filter-card-standalone">
-          <div className="filter-container">
-            <span className="filter-label font-mono">FILTER SEVERITY:</span>
-            <div className="filter-chips">
-              {['ALL', 'HIGH', 'MEDIUM', 'LOW'].map((s) => (
-                <button
-                  key={s}
-                  className={`filter-chip ${selectedSeverity === s ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedSeverity(s);
-                    setCurrentPage(1);
-                    if (selectedReportId) loadFindings();
-                  }}
-                >
-                  <span className="chip-name font-mono">{s}</span>
-                </button>
-              ))}
-            </div>
+      {/* Severity Filter */}
+      <div className="card filter-card-standalone" style={{ marginBottom: '1.25rem', padding: '0.75rem 1.25rem' }}>
+        <div className="filter-container" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span className="filter-label font-mono text-small text-muted">FILTER SEVERITY:</span>
+          <div className="filter-chips" style={{ display: 'flex', gap: '0.5rem' }}>
+            {['ALL', 'HIGH', 'MEDIUM', 'LOW'].map((s) => (
+              <button
+                key={s}
+                className={`filter-chip ${selectedSeverity === s ? 'active' : ''}`}
+                style={{
+                  padding: '0.35rem 0.8rem',
+                  borderRadius: '4px',
+                  border: selectedSeverity === s ? '1px solid #06b6d4' : '1px solid #334155',
+                  background: selectedSeverity === s ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                  color: selectedSeverity === s ? '#38bdf8' : '#94a3b8',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                }}
+                onClick={() => {
+                  setSelectedSeverity(s);
+                  setCurrentPage(1);
+                }}
+              >
+                <span className="chip-name font-mono">{s}</span>
+              </button>
+            ))}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Findings List Cards / Empty State */}
-      {!hasExecuted && !analyzing ? (
-        <EmptyState
-          icon="🚩"
-          title="Symbolic Rule Engine Pending"
-          description="No anomaly findings displayed yet. Click 'RUN SYMBOLIC ANALYSIS' above to evaluate deterministic co-occurrence and communication burst rules against report evidence."
-        />
-      ) : loading || analyzing ? (
+      {loading || analyzing ? (
         <LoadingSpinner message={analyzing ? analysisStep : 'Evaluating symbolic findings...'} />
       ) : findings.length === 0 ? (
         <EmptyState
-          icon="✓"
-          title="No rule findings flagged"
-          description="No anomalies triggered rule thresholds for this filter."
+          icon="🚩"
+          title="No anomaly findings flagged"
+          description="No anomalies triggered rule thresholds for this filter. Run Symbolic Analysis above to evaluate deterministic rules."
         />
       ) : (
-        <div className="findings-list">
+        <div className="findings-list" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {findings.map((fnd) => {
             const isExpanded = expandedFindingId === fnd.id;
             const detail = findingDetails[fnd.id];
 
             return (
-              <div key={fnd.id} className="finding-item-card">
-                <div className="finding-header">
-                  <div className="finding-title-row">
+              <div key={fnd.id} className="finding-item-card card">
+                {/* Header Badge Row */}
+                <div className="finding-header-row">
+                  <div className="finding-badges-left">
                     <span className={`severity-badge ${getSeverityBadgeClass(fnd.severity)}`}>
                       {fnd.severity} SEVERITY
                     </span>
                     <ClassificationBadge classification={fnd.classification} />
-                    <span className="finding-id-tag font-mono">{fnd.id}</span>
+                    <span className="finding-id-tag font-mono">[{fnd.id}]</span>
                   </div>
+                </div>
+
+                {/* Rule Title & Explanation */}
+                <div className="finding-content-block">
                   <h3 className="rule-title">{fnd.rule_name}</h3>
-                </div>
-
-                <div className="finding-body">
                   <p className="explanation-text">{fnd.explanation}</p>
-
-                  <div className="finding-meta-row">
-                    <span className="meta-tag font-mono">Rule ID: <strong>{fnd.rule_id}</strong></span>
-                    <span className="meta-tag font-mono">
-                      Parameters: <code>{JSON.stringify(fnd.parameters_used)}</code>
-                    </span>
-                  </div>
                 </div>
 
+                {/* Structured Parameters Box */}
+                <div className="finding-meta-row">
+                  <div className="meta-item font-mono">
+                    <span className="meta-label">Rule ID:</span>
+                    <span className="meta-value">{fnd.rule_id}</span>
+                  </div>
+                  {fnd.parameters_used && Object.keys(fnd.parameters_used).length > 0 && (
+                    <div className="meta-params-group font-mono">
+                      <span className="meta-label">Parameters:</span>
+                      <div className="params-chips-list">
+                        {Object.entries(fnd.parameters_used).map(([key, val]) => (
+                          <span key={key} className="param-chip font-mono">
+                            <span className="param-key">{key.replace(/_/g, ' ')}:</span>
+                            <span className="param-val">
+                              {Array.isArray(val) ? `[${val.join(', ')}]` : String(val)}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Action Accordion */}
                 <div className="finding-footer">
-                  <button className="btn-expand font-mono" onClick={() => toggleExpand(fnd.id)}>
+                  <button className="btn-cyber-outline btn-sm font-mono" onClick={() => toggleExpand(fnd.id)}>
                     {isExpanded ? '▲ Hide Linked Evidence' : `▼ View Linked Evidence (${fnd.related_evidence_ids.length} Items)`}
                   </button>
                 </div>
 
+                {/* Expanded Linked Evidence Box */}
                 {isExpanded && (
                   <div className="expanded-evidence-box">
-                    <h4>Linked Evidence Ground-Truth Records</h4>
+                    <h4 className="font-mono text-cyan" style={{ fontSize: '0.85rem', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Linked Evidence Ground-Truth Records
+                    </h4>
                     {!detail ? (
                       <div className="text-muted text-small font-mono">Loading evidence details...</div>
                     ) : detail.related_evidence && detail.related_evidence.length > 0 ? (
@@ -284,11 +310,11 @@ export const FindingsPage: React.FC = () => {
             );
           })}
 
-          <div className="pagination-bar" style={{ marginTop: '1rem' }}>
-            <span className="page-info font-mono">
+          <div className="pagination-bar" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span className="page-info font-mono text-small text-muted">
               Showing page {currentPage} of {totalPages} ({totalFindings} findings)
             </span>
-            <div className="page-buttons">
+            <div className="page-buttons" style={{ display: 'flex', gap: '0.5rem' }}>
               <button
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => p - 1)}
