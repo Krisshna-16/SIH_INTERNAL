@@ -49,16 +49,27 @@ export const RelationshipsPage: React.FC = () => {
     loadReports();
   }, [loadReports]);
 
-  const loadRelationships = useCallback(async () => {
-    if (!selectedReportId) return;
+  // loadRelationships accepts explicit parameter values to eliminate React state closure lag
+  const loadRelationships = useCallback(async (
+    reportIdParam?: string,
+    relTypeParam?: string,
+    classParam?: string,
+    pageParam?: number
+  ) => {
+    const rId = reportIdParam || selectedReportId;
+    const rType = relTypeParam !== undefined ? relTypeParam : selectedRelType;
+    const cFilter = classParam !== undefined ? classParam : selectedClass;
+    const pNum = pageParam !== undefined ? pageParam : currentPage;
+
+    if (!rId) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetchRelationships(
-        selectedReportId,
-        selectedRelType,
-        selectedClass,
-        currentPage,
+        rId,
+        rType,
+        cFilter,
+        pNum,
         pageSize
       );
       setRelationships(res.items);
@@ -70,6 +81,13 @@ export const RelationshipsPage: React.FC = () => {
     }
   }, [selectedReportId, selectedRelType, selectedClass, currentPage, pageSize]);
 
+  // Automatically load relationships when report or filter state changes if already executed
+  useEffect(() => {
+    if (selectedReportId && hasExecuted) {
+      loadRelationships(selectedReportId, selectedRelType, selectedClass, currentPage);
+    }
+  }, [selectedReportId, selectedRelType, selectedClass, currentPage, hasExecuted, loadRelationships]);
+
   const handleRunAnalysis = async () => {
     if (!selectedReportId) return;
     setAnalyzing(true);
@@ -77,20 +95,20 @@ export const RelationshipsPage: React.FC = () => {
     setAnalysisStep('Loading Ground-Truth Evidence & Initializing Symbolic Rules...');
 
     try {
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 600));
       setAnalysisStep('Evaluating Co-occurrence & Structural Relationships...');
 
       const apiPromise = runSymbolicAnalysis(selectedReportId);
 
-      await new Promise((r) => setTimeout(r, 1100));
+      await new Promise((r) => setTimeout(r, 800));
       setAnalysisStep('Deriving Deterministic FACT & INFERENCE Triplets...');
 
       await apiPromise;
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 400));
 
       setHasExecuted(true);
       setCurrentPage(1);
-      await loadRelationships();
+      await loadRelationships(selectedReportId, selectedRelType, selectedClass, 1);
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Symbolic analysis failed.');
     } finally {
@@ -105,7 +123,7 @@ export const RelationshipsPage: React.FC = () => {
     <div className="relationships-page-container">
       <header className="page-header">
         <div className="header-title-block">
-          <span className="phase-tag">Phase 4 | Symbolic AI Rule Engine</span>
+          <span className="phase-tag">FORENSIC INTELLIGENCE // PHASE 4 SYMBOLIC RULES</span>
           <h2>Derived Relationships</h2>
           <p className="subtitle">
             Deterministic relationship extraction (FACT vs INFERENCE) with complete rule provenance.
@@ -175,11 +193,14 @@ export const RelationshipsPage: React.FC = () => {
               {['ALL', 'USED', 'LOCATED_AT', 'ASSOCIATED_WITH', 'ACCESSED', 'CONTACTED'].map((t) => (
                 <button
                   key={t}
+                  type="button"
                   className={`filter-chip ${selectedRelType === t ? 'active' : ''}`}
                   onClick={() => {
                     setSelectedRelType(t);
                     setCurrentPage(1);
-                    if (selectedReportId) loadRelationships();
+                    if (selectedReportId) {
+                      loadRelationships(selectedReportId, t, selectedClass, 1);
+                    }
                   }}
                 >
                   <span className="chip-name font-mono">{t}</span>
@@ -194,11 +215,14 @@ export const RelationshipsPage: React.FC = () => {
               {['ALL', 'FACT', 'INFERENCE'].map((c) => (
                 <button
                   key={c}
+                  type="button"
                   className={`filter-chip ${selectedClass === c ? 'active' : ''}`}
                   onClick={() => {
                     setSelectedClass(c);
                     setCurrentPage(1);
-                    if (selectedReportId) loadRelationships();
+                    if (selectedReportId) {
+                      loadRelationships(selectedReportId, selectedRelType, c, 1);
+                    }
                   }}
                 >
                   <span className="chip-name font-mono">{c}</span>
@@ -270,14 +294,22 @@ export const RelationshipsPage: React.FC = () => {
               <div className="page-buttons">
                 <button
                   disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
+                  onClick={() => {
+                    const newPage = currentPage - 1;
+                    setCurrentPage(newPage);
+                    if (selectedReportId) loadRelationships(selectedReportId, selectedRelType, selectedClass, newPage);
+                  }}
                   className="btn-secondary btn-sm font-mono"
                 >
                   Previous
                 </button>
                 <button
                   disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
+                  onClick={() => {
+                    const newPage = currentPage + 1;
+                    setCurrentPage(newPage);
+                    if (selectedReportId) loadRelationships(selectedReportId, selectedRelType, selectedClass, newPage);
+                  }}
                   className="btn-secondary btn-sm font-mono"
                 >
                   Next
