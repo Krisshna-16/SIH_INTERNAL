@@ -21,11 +21,6 @@ class EntityType(str, enum.Enum):
 class Entity(Base):
     """
     Extracted forensic entity with full provenance tracking.
-    
-    PRIVACY / REDACTION HOOK NOTE:
-    In Phase 9 (Privacy Gateway), raw entity values (e.g. real names, phone numbers)
-    will be intercepted here or via view-layer filters to apply pseudonymization / 
-    role-based redaction prior to investigator presentation or export.
     """
     __tablename__ = "entities"
 
@@ -38,6 +33,6 @@ class Entity(Base):
     source_page = Column(Integer, nullable=False)
     source_report = Column(String, nullable=False)
     extraction_method = Column(String, nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
     report = relationship("Report", back_populates="entities")

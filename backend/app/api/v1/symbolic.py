@@ -12,6 +12,18 @@ from app.symbolic.engine import SymbolicEngine
 router = APIRouter(tags=["symbolic"])
 
 
+def parse_json_value(val: Any, default: Any) -> Any:
+    """Helper to parse JSON columns whether returned as native Python objects or JSON strings."""
+    if isinstance(val, (list, dict)):
+        return val
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except Exception:
+            return default
+    return default
+
+
 @router.post("/reports/{report_id}/analyze")
 def run_analysis(report_id: str, db: Session = Depends(get_db)):
     """Triggers Symbolic AI rule engine analysis for a given report."""
@@ -122,15 +134,8 @@ def list_findings(
 
     result = []
     for fnd in items:
-        try:
-            ev_ids = json.loads(fnd.related_evidence_ids)
-        except Exception:
-            ev_ids = []
-
-        try:
-            params = json.loads(fnd.parameters_used)
-        except Exception:
-            params = {}
+        ev_ids = parse_json_value(fnd.related_evidence_ids, [])
+        params = parse_json_value(fnd.parameters_used, {})
 
         result.append({
             "id": fnd.id,
@@ -164,15 +169,8 @@ def get_finding_by_id(finding_id: str, db: Session = Depends(get_db)):
     if not fnd:
         raise HTTPException(status_code=404, detail=f"Finding '{finding_id}' not found.")
 
-    try:
-        ev_ids = json.loads(fnd.related_evidence_ids)
-    except Exception:
-        ev_ids = []
-
-    try:
-        params = json.loads(fnd.parameters_used)
-    except Exception:
-        params = {}
+    ev_ids = parse_json_value(fnd.related_evidence_ids, [])
+    params = parse_json_value(fnd.parameters_used, {})
 
     # Resolve related evidence records
     related_evidence = []

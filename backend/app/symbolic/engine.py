@@ -53,7 +53,7 @@ class SymbolicEngine:
                 actor="system",
                 action="SYMBOLIC_ANALYSIS_EXECUTED",
                 report_id=report_id,
-                details=json.dumps({"total_relationships": 0, "total_findings": 0}),
+                details={"total_relationships": 0, "total_findings": 0},
             ))
             db.commit()
             return {
@@ -101,7 +101,6 @@ class SymbolicEngine:
                 continue
             seen_rel_keys.add(rel_key)
 
-            # Mandatory Check-Before-Insert Database Query inside the loop for every Relationship row
             existing_rel = db.query(Relationship).filter(
                 Relationship.report_id == report_id,
                 Relationship.source_evidence_id == r_dict["source_evidence_id"],
@@ -141,12 +140,10 @@ class SymbolicEngine:
                 continue
             seen_fnd_keys.add(fnd_key)
 
-            # Mandatory Check-Before-Insert Database Query inside the loop for every Finding row
             existing_fnd = db.query(Finding).filter(
                 Finding.report_id == report_id,
                 Finding.finding_type == f_dict["finding_type"],
-                Finding.rule_id == f_dict["rule_id"],
-                Finding.related_evidence_ids == json.dumps(f_dict["related_evidence_ids"])
+                Finding.rule_id == f_dict["rule_id"]
             ).first()
             if existing_fnd:
                 continue
@@ -162,9 +159,9 @@ class SymbolicEngine:
                 rule_id=f_dict["rule_id"],
                 rule_name=f_dict["rule_name"],
                 explanation=f_dict["explanation"],
-                related_evidence_ids=json.dumps(f_dict["related_evidence_ids"]),
-                related_relationship_ids=json.dumps(f_dict.get("related_relationship_ids", [])),
-                parameters_used=json.dumps(f_dict["parameters_used"]),
+                related_evidence_ids=f_dict["related_evidence_ids"],
+                related_relationship_ids=f_dict.get("related_relationship_ids", []),
+                parameters_used=f_dict["parameters_used"],
                 severity=f_dict["severity"],
             )
             fnd_db_items.append(fnd_db)
@@ -182,10 +179,10 @@ class SymbolicEngine:
                 actor="system",
                 action="SYMBOLIC_ANALYSIS_EXECUTED",
                 report_id=report_id,
-                details=json.dumps({
+                details={
                     "total_relationships": len(rel_db_items),
                     "total_findings": len(fnd_db_items),
-                }),
+                },
             ))
 
             report.status = "analyzed"

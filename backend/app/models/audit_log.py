@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Text, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, JSON
 from app.db.session import Base
 
 
@@ -14,5 +14,5 @@ class AuditLog(Base):
     action = Column(String, nullable=False, index=True)
     evidence_id = Column(String, nullable=True, index=True)
     report_id = Column(String, nullable=True, index=True)
-    details = Column(Text, nullable=True)  # JSON metadata string
-    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    details = Column(JSON, nullable=True)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
