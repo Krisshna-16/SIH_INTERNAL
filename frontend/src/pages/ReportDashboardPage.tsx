@@ -169,6 +169,14 @@ export const ReportDashboardPage: React.FC = () => {
 
   const isRunning = pipeline.extract === 'running' || pipeline.consolidate === 'running' || pipeline.analyze === 'running';
 
+  // Show counts and categories ONLY if report status is 'analyzed' or pipeline run completed
+  const isAnalyzed = report.status === 'analyzed' || pipeline.analyze === 'done';
+
+  const displayTotalEvidence = isAnalyzed ? (summary?.total_evidence ?? 0) : 0;
+  const displayTotalRelationships = isAnalyzed ? (symbolicSummary?.total_relationships ?? 0) : 0;
+  const displayTotalFindings = isAnalyzed ? (symbolicSummary?.total_findings ?? 0) : 0;
+  const displayTypeBreakdown = isAnalyzed && summary ? summary.type_breakdown : {};
+
   return (
     <div className="dashboard-page">
       {/* Page Title & Mission Control Header */}
@@ -238,7 +246,7 @@ export const ReportDashboardPage: React.FC = () => {
           <div className="metric-header">
             <span className="metric-lbl">EVIDENCE RECORDS</span>
           </div>
-          <span className="metric-val font-mono">{summary?.total_evidence ?? 0}</span>
+          <span className="metric-val font-mono">{displayTotalEvidence}</span>
           <span className="metric-sub font-mono">Indexed Ground-Truth</span>
         </div>
 
@@ -246,7 +254,7 @@ export const ReportDashboardPage: React.FC = () => {
           <div className="metric-header">
             <span className="metric-lbl">SOURCE PAGES</span>
           </div>
-          <span className="metric-val font-mono">{summary?.page_count ?? report.page_count}</span>
+          <span className="metric-val font-mono">{report.page_count}</span>
           <span className="metric-sub font-mono">UFDR Parsed Pages</span>
         </div>
 
@@ -254,7 +262,7 @@ export const ReportDashboardPage: React.FC = () => {
           <div className="metric-header">
             <span className="metric-lbl">EVIDENCE CATEGORIES</span>
           </div>
-          <span className="metric-val font-mono">{summary ? Object.keys(summary.type_breakdown).length : 0}</span>
+          <span className="metric-val font-mono">{Object.keys(displayTypeBreakdown).length}</span>
           <span className="metric-sub font-mono">Entity Types</span>
         </div>
 
@@ -262,7 +270,7 @@ export const ReportDashboardPage: React.FC = () => {
           <div className="metric-header">
             <span className="metric-lbl">RELATIONSHIPS</span>
           </div>
-          <span className="metric-val font-mono">{symbolicSummary?.total_relationships ?? 0}</span>
+          <span className="metric-val font-mono">{displayTotalRelationships}</span>
           <span className="metric-sub font-mono">Derived Triplets</span>
         </div>
 
@@ -270,7 +278,7 @@ export const ReportDashboardPage: React.FC = () => {
           <div className="metric-header">
             <span className="metric-lbl">FLAGGED FINDINGS</span>
           </div>
-          <span className="metric-val font-mono">{symbolicSummary?.total_findings ?? 0}</span>
+          <span className="metric-val font-mono">{displayTotalFindings}</span>
           <span className="metric-sub font-mono">Rule Anomalies</span>
         </div>
       </div>
@@ -291,10 +299,10 @@ export const ReportDashboardPage: React.FC = () => {
               </button>
             </div>
 
-            {summary && Object.keys(summary.type_breakdown).length > 0 ? (
+            {Object.keys(displayTypeBreakdown).length > 0 ? (
               <div className="category-items-grid">
-                {Object.entries(summary.type_breakdown).map(([type, count]) => {
-                  const percentage = summary.total_evidence > 0 ? ((count / summary.total_evidence) * 100).toFixed(1) : '0';
+                {Object.entries(displayTypeBreakdown).map(([type, count]) => {
+                  const percentage = displayTotalEvidence > 0 ? ((count / displayTotalEvidence) * 100).toFixed(1) : '0';
                   return (
                     <div key={type} className="cat-item-card">
                       <div className="cat-item-header">
@@ -317,7 +325,7 @@ export const ReportDashboardPage: React.FC = () => {
               </div>
             ) : (
               <div className="empty-state-padding">
-                <p className="text-muted">No evidence records indexed yet. Execute full pipeline above to process.</p>
+                <p className="text-muted">No evidence records indexed yet. Click <strong>EXECUTE FULL PIPELINE</strong> above to process this case report.</p>
               </div>
             )}
           </div>
@@ -399,7 +407,7 @@ export const ReportDashboardPage: React.FC = () => {
                 <span className="stream-dot dot-green" />
                 <div className="stream-content">
                   <span className="stream-title">Ground-Truth Storage Locked</span>
-                  <span className="stream-sub font-mono">Local SQLite Database</span>
+                  <span className="stream-sub font-mono">Local Database Storage</span>
                 </div>
               </div>
 
@@ -415,7 +423,7 @@ export const ReportDashboardPage: React.FC = () => {
                 <span className="stream-dot dot-purple" />
                 <div className="stream-content">
                   <span className="stream-title">Grounded LLM Prompting</span>
-                  <span className="stream-sub font-mono">Ollama local-by-default</span>
+                  <span className="stream-sub font-mono">Air-gapped local / Cloud API</span>
                 </div>
               </div>
             </div>

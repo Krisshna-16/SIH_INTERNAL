@@ -1,5 +1,5 @@
 import logging
-import uuid
+import hashlib
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
 from app.models.report import Report, ReportPage
@@ -10,10 +10,17 @@ from app.extraction.spacy_extractor import SpacyExtractor
 logger = logging.getLogger(__name__)
 
 
+def generate_deterministic_entity_id(report_id: str, ent_type: str, ent_value: str, source_page: int, index: int) -> str:
+    """Generates a stable, 100% deterministic Entity ID based on core entity attributes."""
+    raw_key = f"{report_id}:{ent_type.upper()}:{ent_value.strip().lower()}:{source_page}:{index}"
+    sha_hash = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()[:8].upper()
+    return f"ENT-{sha_hash}"
+
+
 class ExtractionPipeline:
     """
     Orchestrates report entity extraction across parsed pages, persisting results
-    to database with full provenance enforcement.
+    to database with full provenance enforcement and 100% deterministic entity IDs.
     """
 
     def __init__(self, extractor: BaseExtractor = None):
@@ -47,17 +54,15 @@ class ExtractionPipeline:
             except Exception as e:
                 page_errors += 1
                 logger.error(f"Unexpected error extracting entities from page {page.page_number} of report '{report_id}': {e}")
-                # Continue processing remaining pages per requirement
 
         db_entities = []
         entity_counts: Dict[str, int] = {}
 
         for idx, dto in enumerate(total_extracted, start=1):
-            # Enforce provenance traceability
             if dto.source_page is None or not dto.source_report:
                 raise ValueError(f"Provenance missing for extracted entity '{dto.value}'")
 
-            entity_id = f"ENT-{uuid.uuid4().hex[:8].upper()}"
+            entity_id = generate_deterministic_entity_id(report_id, dto.type, dto.value, dto.source_page, idx)
             db_entity = Entity(
                 id=entity_id,
                 report_id=report_id,
