@@ -53,12 +53,17 @@ export const EvidencePage: React.FC = () => {
     loadReports();
   }, [loadReports]);
 
-  const loadEvidence = useCallback(async () => {
-    if (!selectedReportId) return;
+  // loadEvidence accepts explicit parameter values to prevent React state closure lag
+  const loadEvidence = useCallback(async (reportIdParam?: string, typeParam?: string, pageParam?: number) => {
+    const rId = reportIdParam || selectedReportId;
+    const tFilter = typeParam !== undefined ? typeParam : selectedType;
+    const pNum = pageParam !== undefined ? pageParam : currentPage;
+
+    if (!rId) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchReportEvidence(selectedReportId, selectedType, undefined, currentPage, pageSize);
+      const res = await fetchReportEvidence(rId, tFilter, undefined, pNum, pageSize);
       setEvidenceList(res.items);
       setTotalEvidence(res.total);
     } catch (err: any) {
@@ -68,6 +73,13 @@ export const EvidencePage: React.FC = () => {
     }
   }, [selectedReportId, selectedType, currentPage, pageSize]);
 
+  // Load evidence automatically when report or filter state changes if already executed
+  useEffect(() => {
+    if (selectedReportId && hasExecuted) {
+      loadEvidence(selectedReportId, selectedType, currentPage);
+    }
+  }, [selectedReportId, selectedType, currentPage, hasExecuted, loadEvidence]);
+
   const handleConsolidate = async () => {
     if (!selectedReportId) return;
     setConsolidating(true);
@@ -75,18 +87,18 @@ export const EvidencePage: React.FC = () => {
     setConsolidateStep('Loading Extracted Entities & Normalizing Values...');
 
     try {
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 600));
       setConsolidateStep('Consolidating Canonical Ground-Truth Evidence Vault...');
 
       const apiPromise = consolidateEvidence(selectedReportId);
 
-      await new Promise((r) => setTimeout(r, 1000));
+      await new Promise((r) => setTimeout(r, 800));
       await apiPromise;
       await new Promise((r) => setTimeout(r, 400));
 
       setHasExecuted(true);
       setCurrentPage(1);
-      await loadEvidence();
+      await loadEvidence(selectedReportId, selectedType, 1);
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message || 'Evidence consolidation failed.');
     } finally {
@@ -144,7 +156,7 @@ export const EvidencePage: React.FC = () => {
     <div className="evidence-page-container">
       <header className="page-header">
         <div className="header-title-block">
-          <span className="phase-tag">Phase 3 | Evidence Database Layer</span>
+          <span className="phase-tag">FORENSIC INTELLIGENCE // PHASE 3 EVIDENCE VAULT</span>
           <h2>Canonical Evidence Explorer</h2>
           <p className="subtitle">
             Ground-truth evidence repository with full provenance tracking and immutable audit logging.
@@ -219,7 +231,9 @@ export const EvidencePage: React.FC = () => {
             onSelectType={(t) => {
               setSelectedType(t);
               setCurrentPage(1);
-              if (selectedReportId) loadEvidence();
+              if (selectedReportId) {
+                loadEvidence(selectedReportId, t, 1);
+              }
             }}
           />
         )}
@@ -292,14 +306,22 @@ export const EvidencePage: React.FC = () => {
               <div className="page-buttons">
                 <button
                   disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => p - 1)}
+                  onClick={() => {
+                    const newPage = currentPage - 1;
+                    setCurrentPage(newPage);
+                    if (selectedReportId) loadEvidence(selectedReportId, selectedType, newPage);
+                  }}
                   className="btn-secondary btn-sm font-mono"
                 >
                   Previous
                 </button>
                 <button
                   disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => p + 1)}
+                  onClick={() => {
+                    const newPage = currentPage + 1;
+                    setCurrentPage(newPage);
+                    if (selectedReportId) loadEvidence(selectedReportId, selectedType, newPage);
+                  }}
                   className="btn-secondary btn-sm font-mono"
                 >
                   Next

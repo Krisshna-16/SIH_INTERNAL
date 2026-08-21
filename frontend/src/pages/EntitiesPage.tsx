@@ -49,19 +49,29 @@ export const EntitiesPage: React.FC = () => {
     loadReports();
   }, [loadReports]);
 
-  const loadEntities = useCallback(async (reportId: string, typeFilter: string) => {
-    if (!reportId) return;
+  // loadEntities accepts explicit parameter values to prevent React state closure lag
+  const loadEntities = useCallback(async (reportIdParam?: string, typeParam?: string) => {
+    const rId = reportIdParam || selectedReportId;
+    const tFilter = typeParam !== undefined ? typeParam : selectedType;
+    if (!rId) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchReportEntities(reportId, typeFilter);
+      const res = await fetchReportEntities(rId, tFilter);
       setEntities(res.items);
     } catch (err: any) {
       setError(err.message || 'Failed to fetch extracted entities.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedReportId, selectedType]);
+
+  // Automatically load entities when selected type or report changes if executed
+  useEffect(() => {
+    if (selectedReportId && hasExecuted) {
+      loadEntities(selectedReportId, selectedType);
+    }
+  }, [selectedReportId, selectedType, hasExecuted, loadEntities]);
 
   const handleRunExtraction = async () => {
     if (!selectedReportId) return;
@@ -70,17 +80,16 @@ export const EntitiesPage: React.FC = () => {
     setExtractionStep('Initializing spaCy NLP Model & Entity Patterns...');
 
     try {
-      // 2.5 second realistic execution feedback
-      await new Promise((res) => setTimeout(res, 800));
+      await new Promise((res) => setTimeout(res, 600));
       setExtractionStep('Scanning UFDR Document Pages & Extracting Character Provenance...');
 
       const apiResPromise = runExtraction(selectedReportId);
 
-      await new Promise((res) => setTimeout(res, 1100));
+      await new Promise((res) => setTimeout(res, 800));
       setExtractionStep('Normalizing Extracted Values & Persisting Ground-Truth Records...');
 
       const res = await apiResPromise;
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 400));
 
       setSummary(res);
       setHasExecuted(true);
@@ -121,7 +130,7 @@ export const EntitiesPage: React.FC = () => {
       {/* Page Header */}
       <header className="page-header">
         <div className="header-title-block">
-          <span className="phase-tag">Phase 2 | Neural AI Layer</span>
+          <span className="phase-tag">FORENSIC INTELLIGENCE // PHASE 2 NEURAL EXTRACTION</span>
           <h2>Neural Entity & Event Extraction</h2>
           <p className="subtitle">
             Local NLP entity recognition (spaCy) and deterministic pattern parsing with full provenance tracking.
@@ -179,7 +188,7 @@ export const EntitiesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Summary Performance Banner (Only shown after explicit extraction) */}
+      {/* Summary Performance Banner */}
       {summary && hasExecuted && !extracting && (
         <div className="card summary-card">
           <div className="summary-card-header">
