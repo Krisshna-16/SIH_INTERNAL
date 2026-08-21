@@ -22,11 +22,15 @@ export const ReportsListPage: React.FC = () => {
       setReports(data);
     } catch (err: any) {
       console.error('Failed to load reports:', err);
+      if (err?.response?.status === 401) {
+        navigate('/login');
+        return;
+      }
       setErrorMessage('Failed to connect to backend server.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
   useEffect(() => { loadReports(); }, [loadReports]);
 
@@ -123,9 +127,14 @@ export const ReportsListPage: React.FC = () => {
         </div>
 
         {errorMessage && (
-          <div className="shared-error-banner">
+          <div className="shared-error-banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>[ERROR] {errorMessage}</span>
-            <button className="btn-text-action" onClick={() => setErrorMessage(null)}>Dismiss</button>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <button className="btn-cyber-outline" onClick={loadReports} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem' }}>
+                🔄 Retry Connection
+              </button>
+              <button className="btn-text-action" onClick={() => setErrorMessage(null)}>Dismiss</button>
+            </div>
           </div>
         )}
 
